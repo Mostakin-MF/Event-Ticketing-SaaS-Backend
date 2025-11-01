@@ -1,0 +1,86 @@
+Event Ticketing and Management SaaS Platform — Project Plan
+Project: Advanced Web Tech - Event Ticketing SaaS Platform
+
+Owner: <your name>
+Created: 2025-10-20
+Updated: 2025-01-27
+
+1) Vision / Goal
+- Build a multi-tenant event ticketing SaaS platform with Next.js (frontend) and NestJS (backend), using PostgreSQL with TypeORM. Prioritize clean architecture, DX, performance (SSR/ISR), and a clear separation between UI and API layers.
+- Focus on event organizers creating public event pages, selling tickets, processing payments, and handling attendee check-in via QR codes.
+
+2) High-Level Requirements
+- Multi-tenant architecture with data isolation per organizer
+- User auth (JWT in HttpOnly cookies) with role-based access (owner/admin/staff)
+- Public event pages (SSR/ISR) and authenticated organizer portal (CSR)
+- Event management, ticket types, inventory management
+- Secure checkout and payment processing
+- QR code generation and mobile check-in system
+- Sales dashboard and reporting with CSV export
+- Email notifications for tickets and confirmations
+
+3) Scope (In / Out)
+- In: Next.js app, NestJS REST API, PostgreSQL, TypeORM, Docker Compose for local DB, lint/format, basic CI, payment integration (Stripe), email service
+- Out: Advanced microservices, real-time websockets (for now), cloud infra IaC (initially), advanced features like reserved seating (V2)
+
+4) Tech Stack (Current Implementation)
+- Frontend: Next.js 16.0.0 (TypeScript, App Router), Tailwind CSS 4.0, React 19.2.0, Axios for data fetching
+- Backend: NestJS 11.0.1 (TypeScript), REST API, class-validator/transformer, TypeORM (to be added)
+- Database: PostgreSQL (to be configured)
+- DevOps/Hosting: Docker Compose (local Postgres+Adminer), Vercel (web) + Render/Railway/Fly (API) [TBD]
+
+5) Current Project Status (as of 2025-01-27)
+- ✅ Basic Next.js frontend scaffolded (App Router, Tailwind CSS 4.0, TypeScript)
+- ✅ Basic NestJS backend scaffolded (v11.0.1, TypeScript, Express platform)
+- ✅ ESLint and Prettier configured for both frontend and backend
+- ✅ Basic project structure established
+- ❌ Database connection not yet configured
+- ❌ TypeORM not yet installed/configured
+- ❌ Authentication system not implemented
+- ❌ Event ticketing domain models not created
+- ❌ Payment integration not implemented
+- ❌ Email service not configured
+
+6) Next Priority Tasks (Updated)
+- [ ] Install and configure TypeORM with PostgreSQL
+- [ ] Set up Docker Compose with PostgreSQL + Adminer
+- [ ] Create database entities for event ticketing (Tenant, User, Event, TicketType, Order, Ticket)
+- [ ] Implement JWT authentication with role-based access control
+- [ ] Create basic CRUD APIs for events and ticket management
+- [ ] Set up Axios in frontend for API communication
+- [ ] Implement multi-tenant data isolation
+- [ ] Add Stripe payment integration
+- [ ] Set up email service for ticket delivery
+- [ ] Create QR code generation and validation system
+
+7) Technical Architecture Decisions
+- ✅ Frontend: Next.js 16.0.0 with App Router (confirmed)
+- ✅ Backend: NestJS 11.0.1 with TypeScript (confirmed)
+- ✅ Styling: Tailwind CSS 4.0 (confirmed)
+- ✅ Data Fetching: Axios (confirmed)
+- ✅ Database: PostgreSQL with TypeORM (confirmed)
+- ✅ Authentication: JWT in HttpOnly cookies (confirmed)
+- 🔄 Payment Provider: Stripe (to be implemented)
+- 🔄 Email Service: TBD (SendGrid/AWS SES)
+
+8) Open Questions / Decisions
+- Q: Hosting choice for API (Render/Railway/Fly)?
+- Q: Email service provider (SendGrid vs AWS SES vs Resend)?
+- Q: QR code library choice (qrcode vs react-qr-code)?
+- Decision: Multi-tenant architecture with row-level tenancy using tenant_id
+
+9) Risks & Mitigations
+- Risk: Payment integration complexity
+- Mitigation: Start with Stripe test mode, robust webhook handling
+- Risk: Multi-tenant data isolation bugs
+- Mitigation: Comprehensive testing, tenant scoping in all queries
+- Risk: QR code security vulnerabilities
+- Mitigation: Signed payloads, one-scan rule enforcement
+
+10) Project Structure
+- Current: Separate `frontend/` and `backend/` directories
+- Future: Consider monorepo structure with shared types
+- Database: PostgreSQL with TypeORM entities
+- API: RESTful endpoints with DTOs and validation
+
+Instructions: Add any requirement or idea here as soon as it comes up. Keep items atomic and time-bound where possible.

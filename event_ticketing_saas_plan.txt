@@ -1,0 +1,167 @@
+Event Ticketing and Management SaaS Platform — Project Plan
+Project Description
+- A multi-tenant event ticketing platform where organizers create and publish events, sell tickets securely, and manage QR-based attendee check-ins. Designed as a university project and portfolio piece, it emphasizes clear architecture, data isolation per organizer (tenant), reliable checkout and webhooks, and a polished UX for both public event pages and staff check-in workflows.
+  - Key Features (at a glance):
+    - Organizer workspaces with roles (owner/admin/staff) and basic branding
+    - Event pages with SEO/meta, ticket tiers, inventory caps
+    - Secure checkout and order management with receipt emails
+    - E-tickets per seat with unique QR codes and email delivery
+    - Mobile-friendly check-in app (scan → validate → mark attendance)
+    - Sales dashboard: revenue, orders, attendees; CSV export
+    - Multi-tenant data isolation with per-tenant scoping
+
+Event Ticketing and Management SaaS - Project Plan
+Version: 0.3 (2025-01-27)
+
+TECH STACK UPDATE:
+- Frontend: Next.js 16.0.0 (TypeScript, App Router), Tailwind CSS 4.0, React 19.2.0, Axios for data fetching
+- Backend: NestJS 11.0.1 (TypeScript), REST API, class-validator/transformer, TypeORM (to be added)
+- Database: PostgreSQL with TypeORM
+- Authentication: JWT in HttpOnly cookies
+- Payment: Stripe integration
+- Email: TBD (SendGrid/AWS SES/Resend)
+
+
+1) Project Overview
+- Summary: A multi-tenant SaaS for event organizers to create public event pages, sell tickets, process payments, and handle attendee check-in via QR codes. Each organizer (tenant) has isolated data and a branded portal.
+- Target Users:
+  - Organizers (owners/admins): set up events, ticket types, pricing, discounts, view sales.
+  - Staff: door/check-in, attendee support.
+  - Attendees: discover event pages, purchase tickets, receive e-tickets, manage orders.
+- Value Proposition:
+  - End-to-end flow under one platform: event pages → checkout → QR tickets → check-in.
+  - Multi-tenant architecture for serving many organizers efficiently with strong data isolation.
+
+2) Functional Requirements (MVP)
+- Organizer & Team Management: create tenant, invite admins/staff, basic branding (logo/colors).
+- Events: draft/publish/archive; details (name, slug, description, venue, dates, timezone, is_public); SEO/meta.
+- Ticket Types & Inventory: multiple tiers; price/currency; quantity_total; prevent oversell.
+- Checkout & Orders: pending → paid; idempotent updates; order details (buyer email, total, items).
+- Tickets & QR Codes: one ticket per unit; unique QR payload; email delivery; validation rules.
+- Check-in App: camera scanning; invalid/duplicate handling; real-time status; simple offline-tolerant UI.
+- Dashboard & Reporting: revenue, units sold, orders/attendees list; CSV export.
+
+3) User Roles & Access Control
+- Roles per tenant: owner, admin, staff.
+- Access scope:
+  - Owner/Admin: full tenant configuration, events, ticketing, reports.
+  - Staff: check-in access and limited views.
+- Public: read-only event page and checkout.
+
+4) Multi-Tenancy & Data Isolation
+- Tenancy Model: row-level tenancy using tenant_id across all domain tables; composite uniqueness (tenant_id, slug).
+- Enforcement: tenant scoping in all queries and service logic; option to add DB-level row security later.
+- Branding: per-tenant settings (logo, color); future subdomain mapping.
+
+5) Information Architecture & Flows
+- Public:
+  - Event Page (by slug) → Checkout → Order Confirmation → Ticket Email.
+- Organizer Portal:
+  - Dashboard → Events (list/create/edit) → Ticket Types → Orders/Attendees → Exports.
+- Check-in:
+  - Select Event → Camera Scan → Validate Ticket → Mark Attendance.
+
+6) Data Model (Conceptual)
+- Tenant (organizer)
+- User (tenant_id, role)
+- Event (tenant_id, slug, dates, venue, is_public)
+- TicketType (event_id, price, currency, inventory)
+- Order (tenant_id, event_id, buyer_email, total, status, payment_ref)
+- Ticket (order_id, ticket_type_id, attendee_name/email, qr_code, checked_in_at)
+- DiscountCode (event_id, code, limits, redemptions) [later]
+- WebhookEvent (provider, type, payload, processed_at)
+
+7) API Surface (Conceptual)
+- Auth: login, logout, me.
+- Tenants: create, invite user, list members.
+- Events: list/create/update/publish/archive.
+- Ticket Types: create/update/list per event.
+- Checkout: create payment session/intention; webhook listener.
+- Orders: list/search; details; exports.
+- Tickets: list per event; check-in endpoint.
+- Public: event page data by slug.
+
+8) Non-Functional Requirements
+- Performance: public pages ≤ 1.5s TTFB under normal load; smooth camera scanning.
+- Scalability: handle launch spikes and doors-open check-ins.
+- Internationalization: base English; multi-currency later.
+- Browser support: evergreen; mobile Safari/Chrome.
+
+9) Security & Compliance
+- Auth: JWT in HttpOnly cookies; role-based access.
+- QR Security: signed payload or lookup token; one-scan rule (checked_in_at must be null before scan).
+- Rate Limiting: checkout, check-in, login.
+- Data Protection: tenant scoping; minimal PII; backups and restore plan.
+- Compliance (later): PCI via payment provider; privacy policy and ToS.
+
+10) Payments & Payouts
+- Payments: start with a single provider (e.g., Stripe) for card payments.
+- Refunds: manual flow initially; note in system.
+- Payouts: begin manual to organizers; consider automated connect-style payouts later.
+- Webhooks: verified signatures; idempotent processing; store events for replay.
+
+11) Email & Notifications
+- Transactional emails: order confirmation with tickets (QR), event updates, staff invites/password flows.
+- Deliverability: dedicated sender domain; DKIM/SPF; suppression handling.
+- Templates: reusable and tenant-branded.
+
+12) Analytics & Observability
+- Product analytics: page views (public pages), basic conversion funnel.
+- Business analytics: revenue per event, tickets sold over time.
+- Monitoring: uptime for public pages and check-in; structured logs for webhooks/orders/check-ins.
+
+13) Accessibility & UX
+- Mobile-first for public pages and check-in.
+- WCAG-aligned components; keyboard navigation; color contrast.
+- Performance-focused media and page rendering.
+
+14) Project Structure & Deliverables (University Portfolio)
+- Documentation:
+  - This project plan (updated as scope evolves).
+  - System architecture diagram (high-level components and data flow).
+  - ERD of conceptual data model.
+  - API contract (endpoint list with request/response examples).
+  - Test plan: scenarios for checkout, QR validation, check-in edge cases.
+- Demonstration Assets:
+  - Sample organizer account with 1–2 events.
+  - Public event page, live checkout in test mode, example tickets.
+  - Screen-recorded demo: checkout to QR scan to check-in.
+
+15) Roadmap
+- MVP (V1): core functional requirements in sections 2–7.
+- V2 Enhancements: discount codes, reserved seating, automated payouts, public organizer profiles, integrations.
+
+16) Risks & Mitigations
+- Payment/checkout complexity → minimize options; robust webhook handling.
+- Overbuilding advanced features → defer to V2; validate with users first.
+- Venue connectivity issues → lightweight check-in; device pre-check guidance; manual fallback.
+
+17) Current Implementation Status (2025-01-27)
+- ✅ Project structure established with separate frontend/backend directories
+- ✅ Next.js 16.0.0 frontend scaffolded with App Router and Tailwind CSS 4.0
+- ✅ NestJS 11.0.1 backend scaffolded with TypeScript
+- ✅ ESLint and Prettier configured for both projects
+- ❌ Database connection and TypeORM not yet configured
+- ❌ Authentication system not implemented
+- ❌ Event ticketing domain models not created
+- ❌ Payment integration not implemented
+- ❌ Email service not configured
+- ❌ QR code generation not implemented
+
+18) Next Development Phase
+- Phase 1: Database setup and core entities
+- Phase 2: Authentication and multi-tenant architecture
+- Phase 3: Event management and ticket types
+- Phase 4: Payment processing and checkout flow
+- Phase 5: QR code generation and check-in system
+- Phase 6: Email notifications and dashboard
+
+19) Open Questions
+- Refund flow detail: organizer-initiated vs attendee-initiated; partial refunds.
+- Seat reservations: required for initial niche?
+- Payouts: manual vs automated; timelines and compliance considerations.
+- Branding: depth needed (custom domains, white-label priorities).
+- Email service provider choice: SendGrid vs AWS SES vs Resend?
+- QR code library: qrcode vs react-qr-code?
+
+End of document.
