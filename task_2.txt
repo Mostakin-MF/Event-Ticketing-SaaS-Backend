@@ -1,0 +1,9 @@
+All the users must have their 
+own DTO file.
+superadmin:
+• Name Should be only contain Alphabets
+• Email Address field is required, and the input must contain @ and .xyz 
+domain
+• Validated NID number format 
+• Validate the NID image given is no more than 2 MB
+

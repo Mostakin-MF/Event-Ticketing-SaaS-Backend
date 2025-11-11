@@ -4,11 +4,11 @@ import {
   UpdateAdminDto,
   UpdateAdminStatusDto,
   CreateUserDto,
+  AdminQueryDto,
 } from './superadmin.dto';
 
 @Injectable()
 export class SuperAdminService {
-  // Route 1: Create a new admin
   createAdmin(createAdminDto: CreateAdminDto) {
     return {
       message: 'Admin created successfully',
@@ -16,44 +16,107 @@ export class SuperAdminService {
         id: 'admin_001',
         name: createAdminDto.name,
         email: createAdminDto.email,
+        tenantId: createAdminDto.tenantId,
+        phone: createAdminDto.phone,
+        role: createAdminDto.role,
+        nidNumber: createAdminDto.nidNumber,
+        nidImageUrl: createAdminDto.nidImageUrl ?? null,
+        status: createAdminDto.status ?? 'active',
+        permissions: createAdminDto.permissions ?? [
+          'manage-events',
+          'manage-users',
+          'view-reports',
+        ],
+        address: {
+          line1: createAdminDto.addressLine1 ?? 'House 10, Road 12',
+          line2: createAdminDto.addressLine2 ?? 'Sector 11',
+          city: createAdminDto.city ?? 'Dhaka',
+          country: createAdminDto.country ?? 'Bangladesh',
+        },
       },
     };
   }
 
-  // Route 2: Get all admins with query parameters
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  getAllAdmins(query: any) {
+  getAllAdmins(query: AdminQueryDto) {
+    const { page = 1, limit = 10, status, role, tenantId, search } = query;
     return {
       message: 'Admins retrieved successfully',
+      meta: {
+        page,
+        limit,
+        total: 2,
+        filters: {
+          status: status ?? null,
+          role: role ?? null,
+          tenantId: tenantId ?? null,
+          search: search ?? null,
+        },
+      },
       data: [
         {
           id: 'admin_001',
           name: 'Iftekhar Tasnim',
-          email: 'iftekhar.tasnim@example.com',
+          email: 'iftekhar.tasnim@example.xyz',
+          tenantId: 'tenant_001',
+          phone: '+8801711122233',
+          role: 'owner',
+          nidNumber: '1234567890123',
+          nidImageUrl: 'https://cdn.example.com/nid/admin_001_front.jpg',
+          status: 'active',
+          permissions: ['manage-events', 'manage-users', 'view-reports'],
+          address: {
+            line1: 'House 10, Road 12',
+            line2: 'Sector 11',
+            city: 'Dhaka',
+            country: 'Bangladesh',
+          },
         },
         {
           id: 'admin_002',
           name: 'Iftekhar Tasnim',
-          email: 'iftekhar.tasnim2@example.com',
+          email: 'iftekhar.tasnim2@example.xyz',
+          tenantId: 'tenant_001',
+          phone: '+8801811122233',
+          role: 'admin',
+          nidNumber: '1234567890124',
+          nidImageUrl: 'https://cdn.example.com/nid/admin_002_front.jpg',
+          status: 'inactive',
+          permissions: ['manage-events', 'view-reports'],
+          address: {
+            line1: 'House 7, Road 5',
+            line2: 'Uttara',
+            city: 'Dhaka',
+            country: 'Bangladesh',
+          },
         },
       ],
     };
   }
 
-  // Route 3: Get admin by ID
   getAdminById(id: string) {
     return {
       message: 'Admin retrieved successfully',
       data: {
         id: id,
         name: 'Iftekhar Tasnim',
-        email: 'iftekhar.tasnim@example.com',
+        email: 'iftekhar.tasnim@example.xyz',
         status: 'active',
+        tenantId: 'tenant_001',
+        phone: '+8801711122233',
+        role: 'owner',
+        nidNumber: '1234567890123',
+        nidImageUrl: 'https://cdn.example.com/nid/admin_001_front.jpg',
+        permissions: ['manage-events', 'manage-users', 'view-reports'],
+        address: {
+          line1: 'House 10, Road 12',
+          line2: 'Sector 11',
+          city: 'Dhaka',
+          country: 'Bangladesh',
+        },
       },
     };
   }
 
-  // Route 4: Update entire admin record
   updateAdmin(id: string, updateAdminDto: UpdateAdminDto) {
     return {
       message: 'Admin updated successfully',
@@ -61,11 +124,23 @@ export class SuperAdminService {
         id: id,
         name: updateAdminDto.name,
         email: updateAdminDto.email,
+        tenantId: updateAdminDto.tenantId,
+        phone: updateAdminDto.phone,
+        role: updateAdminDto.role,
+        nidNumber: updateAdminDto.nidNumber,
+        nidImageUrl: updateAdminDto.nidImageUrl,
+        status: updateAdminDto.status,
+        permissions: updateAdminDto.permissions,
+        address: {
+          line1: updateAdminDto.addressLine1,
+          line2: updateAdminDto.addressLine2,
+          city: updateAdminDto.city,
+          country: updateAdminDto.country,
+        },
       },
     };
   }
 
-  // Route 5: Partial update admin status
   updateAdminStatus(id: string, updateStatusDto: UpdateAdminStatusDto) {
     return {
       message: 'Admin status updated successfully',
@@ -76,7 +151,6 @@ export class SuperAdminService {
     };
   }
 
-  // Route 6: Delete an admin
   deleteAdmin(id: string) {
     return {
       message: 'Admin deleted successfully',
@@ -86,7 +160,6 @@ export class SuperAdminService {
     };
   }
 
-  // Route 7: Create a user
   createUser(createUserDto: CreateUserDto) {
     return {
       message: 'User created successfully',
@@ -94,27 +167,58 @@ export class SuperAdminService {
         id: 'user_001',
         name: createUserDto.name,
         email: createUserDto.email,
+        tenantId: createUserDto.tenantId,
+        phone: createUserDto.phone,
+        role: createUserDto.role,
       },
     };
   }
 
-  // Route 8: Get all users with query parameters
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  getAllUsers(query: any) {
+  getAllUsers(query: AdminQueryDto) {
+    const { page = 1, limit = 10, tenantId, search } = query;
     return {
       message: 'Users retrieved successfully',
+      meta: {
+        page,
+        limit,
+        total: 2,
+        filters: {
+          tenantId: tenantId ?? null,
+          search: search ?? null,
+        },
+      },
       data: [
         {
           id: 'user_001',
           name: 'Iftekhar Tasnim',
-          email: 'iftekhar.tasnim@example.com',
+          email: 'iftekhar.tasnim@example.xyz',
+          tenantId: 'tenant_001',
+          phone: '+8801777788899',
+          role: 'admin',
         },
         {
           id: 'user_002',
           name: 'Iftekhar Tasnim',
-          email: 'iftekhar.tasnim2@example.com',
+          email: 'iftekhar.tasnim2@example.xyz',
+          tenantId: 'tenant_002',
+          phone: '+8801999988899',
+          role: 'staff',
         },
       ],
+    };
+  }
+
+  saveAdminNidImage(id: string, file: Express.Multer.File) {
+    return {
+      message: 'NID image uploaded successfully',
+      data: {
+        adminId: id,
+        file: {
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+        },
+      },
     };
   }
 }

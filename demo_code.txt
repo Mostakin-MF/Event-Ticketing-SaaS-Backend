@@ -1,0 +1,273 @@
+Building RESTful API using Node.js, Express.js, and NestJS.
+Express.js Example:
+const express = require('express');
+const app = express();
+app.get('/', (req, res) => {
+res.send('Hello, World!');
+});
+app.listen(3000, () => {
+console.log('Server running on port 3000');
+});
+
+Building RESTful API using Node.js, Express.js, and NestJS.
+NestJS Example:
+import { Controller, Get } from '@nestjs/common';
+@Controller()
+export class AppController {
+@Get()
+getHello(): string {
+return 'Hello, World!';
+}
+
+
+}import { Controller, Get, Post, Body } from '@nestjs/common';
+import { AppService } from './app.service';
+// Define the controller and set the base URL path to '/users'
+@Controller('users')
+export class UserController {
+//Injecting dependencies through the constructor
+constructor(private readonly userService: UserService) {}
+// Define a route handler for the HTTP GET method to handle requests to 
+'/users' with GET method
+@Get()
+getUsers() {
+return this.userService.getAllUsers();
+}
+// The `@Body()` decorator extracts the request body and binds it to the 
+`data` parameter
+@Post()
+createUser(@Body() data: string) {
+return this.userService.createUser(data);
+}
+}
+
+
+import { Injectable } from '@nestjs/common';
+// Mark the class as injectable using the `@Injectable()` decorator
+@Injectable()
+export class UserService {
+// Method to fetch users
+getUsers(): string[] {
+return ['John', 'Jane', 'Doe'];
+}
+// Method to create a user
+// Accepts a `data` parameter of type string representing user 
+data
+createUser(data: string): string {
+// Logic to create a user using the provided data
+return `User created: ${data}`;
+}
+}
+
+import { Module } from '@nestjs/common';
+import { UserService } from './user.service';
+import { UserController } from './user.controller';
+@Module({
+providers: [UserService],
+controllers: [UserController],
+})
+export class UserModule {}
+
+
+1.Module Decorators:
+•@Module(): to define module metadata.
+2.Controller Decorators:
+•@Controller(path?: string): for the controller.
+3.Provider Decorators:
+•@Injectable(): for the injectable provider.
+4.Route Handler Decorators:
+•@Get(path?: string | string[]): to define the route path(s) for GET requests.
+•@Post(path?: string | string[]): to define the route path(s) for POST requests.
+•@Put(path?: string | string[]): to define the route path(s) for PUT requests.
+•@Delete(path?: string | string[]): to define the route path(s) for DELETE 
+requests.
+•@Patch(path?: string | string[]): to define the route path(s) for PATCH 
+requests.
+
+5.Parameter Decorators:
+•@Param(param: string): to extract a route parameter within a route handler.
+•@Query(param: string): to extract a query parameter within a route handler.
+•@Body(param?: string): to extract the request body within a route handler.
+•@Request: injects the entire request object within a route handler.
+•@Response(): injects the entire response object within a route handler.
+6.Middleware Decorators:
+•@UseGuards(): Attaches guards to a route handler or controller.
+•@UseInterceptors(): Attaches interceptors to a route handler or controller.
+•@UsePipes(): Attaches pipes to a route handler or controller.
+7.Exception Decorators:
+•@Catch(): Defines an exception filter for handling specific exceptions.
+•@HttpException(): Defines a custom HTTP exception.
+
+DTO stands for Data Transfer Object. It is a design pattern commonly used in
+software development to transfer data between different layers or components
+of an application. DTOs provide a structured way to encapsulate and transport
+data without exposing the underlying implementation details.
+// createUser.dto.ts
+export class CreateUserDto {
+name: string;
+email: string;
+password: string;
+}
+
+
+// user.controller.ts
+import { Controller, Post, Body } from '@nestjs/common';
+import { CreateUserDto } from './createUser.dto';
+import { UserService } from './user.service';
+@Controller('users')
+export class UserController {
+constructor(private readonly userService: UserService) {}
+@Post()
+createUser(@Body() createUserDto: CreateUserDto) {
+return this.userService.createUser(createUserDto);
+}
+}
+
+
+// user.service.ts
+import { Injectable } from '@nestjs/common';
+import { CreateUserDto } from './createUser.dto';
+@Injectable()
+export class UserService {
+createUser(createUserDto: CreateUserDto): string {
+// Logic to create a new user using the data from the DTO
+const { name, email } = createUserDto;
+// ...create user logic...
+return ‘User created: ${name} (${email})’;
+}
+}
+
+import { Controller, Get, Param, ParseIntPipe } from
+'@nestjs/common';
+@Controller('users')
+export class UserController {
+@Get(':id')
+getUser(@Param('id', ParseIntPipe) userId: number) {
+// userId will be automatically transformed to a number
+// ...
+}
+}
+
+To perform validation using class-validator, use following
+command in your nestjs project folder
+npm install class-validator class-transformer
+Import the necessary modules in your DTO
+import { IsString, IsEmail } from 'class-validator';
+
+import { IsString, IsEmail } from 'class-validator';
+export class CreateUserDto {
+@IsString()
+name: string;
+@IsEmail()
+email: string;
+@IsString()
+password: string;
+}
+
+
+@Post('/addadmin’)
+@UsePipes(new ValidationPipe())// Apply the validation
+addAdmin(@Body() data:AdminDTO):string {
+console.log(data);
+return this.adminService.addAdmin(data);
+}
+
+Value Validation:
+IsDefined: Checks if the value is defined (not undefined or null).
+IsNotEmpty: Checks if the value is not empty.
+IsEmpty: Checks if the value is empty.
+Equals: Checks if the value is equal to a specified value.
+NotEquals: Checks if the value is not equal to a specified value.
+Contains: Checks if the value contains a specified substring.
+NotContains: Checks if the value does not contain a specified substring.
+IsIn: Checks if the value is one of the specified values.
+IsNotIn: Checks if the value is not one of the specified values.
+IsBoolean: Checks if the value is a boolean.
+IsDate: Checks if the value is a valid date.
+IsString: Checks if the value is a string.
+IsNumber: Checks if the value is a number.
+IsInt: Checks if the value is an integer.
+IsPositive: Checks if the value is a positive number.
+IsNegative: Checks if the value is a negative number.
+IsArray: Checks if the value is an array.
+IsEnum: Checks if the value is part of an enum.
+
+String Validation:
+Length: Checks if the string length is within a specified range.
+MinLength: Checks if the string length is greater than or equal to a specified minimum value.
+MaxLength: Checks if the string length is less than or equal to a specified maximum value.
+IsEmail: Checks if the value is a valid email address.
+IsUrl: Checks if the value is a valid URL.
+IsPhoneNumber: Checks if the value is a valid phone number.
+Matches: Checks if it matches with regular express.
+One Example for Matches given below;
+@Matches(/^[A-Za-z]+$/)
+firstName: string;
+
+
+
+• File Upload is handled by built-in module based on the multer
+middleware package for Express.
+• Multer handles data posted in the multipart/form-data format, which is
+primarily used for uploading files via an HTTP POST request.
+• installing Multer typings package:
+$ npm i -D @types/multer
+Import the necessary modules and decorators:
+import { Controller, Post, UseInterceptors, UploadedFile } 
+from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express’;
+import { MulterError, diskStorage } from "multer";
+
+
+@Post('upload')
+@UseInterceptors(FileInterceptor('file'))
+uploadFile(@UploadedFile() file: Express.Multer.File) 
+{
+console.log(file);
+}
+
+@Post('upload')
+@UseInterceptors(FileInterceptor('file',
+{ fileFilter: (req, file, cb) => {
+if (file.originalname.match(/^.*\.(jpg|webp|png|jpeg)$/))
+cb(null, true);
+else {
+cb(new MulterError('LIMIT_UNEXPECTED_FILE', 'image'), false);
+}
+},
+limits: { fileSize: 30000 },
+storage:diskStorage({
+destination: './uploads',
+filename: function (req, file, cb) {
+cb(null,Date.now()+file.originalname)
+},
+})
+}))
+uploadFile(@UploadedFile() file: Express.Multer.File) {
+console.log(file);
+}
+
+The FileInterceptor is configured with the following options:
+file: Specifies the field name in the request payload that contains the 
+uploaded file.
+fileFilter: A function that checks if the uploaded file meets the 
+specified criteria. In this example, it uses a regular expression to 
+match the file extensions (jpg, webp, png, jpeg).
+limits: Sets limits for the uploaded file, such as the maximum file size 
+(600000 bytes in this case).
+storage: Specifies the destination directory and the file naming 
+strategy. In this example, it uses diskStorage with the destination set 
+to ./uploads and a custom filename generator function.
+
+@Get('/getimage/:name')
+getImages(@Param('name') name, @Res() res) {
+res.sendFile(name,{ root: './uploads' })
+}
+
+@Param('name'): The name parameter is obtained from the URL 
+path using the @Param() decorator. It represents the image file 
+name.
+@Res() res: the response object using the @Res() decorator. It allows 
+you to manipulate and send the HTTP response.
+res.sendFile(name, { root: './uploads' }) statement is used to send 
+the image file as the response.
