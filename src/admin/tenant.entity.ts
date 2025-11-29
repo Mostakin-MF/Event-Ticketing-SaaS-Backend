@@ -33,4 +33,3 @@ export class TenantEntity {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-

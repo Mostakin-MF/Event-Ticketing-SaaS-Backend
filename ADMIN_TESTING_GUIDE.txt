@@ -1,0 +1,637 @@
+================================================================================
+ADMIN SECTION TESTING GUIDE
+Event Ticketing SaaS Platform - Backend API Testing
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+1. Prerequisites
+2. Setup Instructions
+3. Testing Workflow
+4. Endpoint Testing Guide
+5. Common Issues & Solutions
+6. Test Scenarios
+
+================================================================================
+1. PREREQUISITES
+================================================================================
+
+Required Software:
+- Postman (Desktop or Web version)
+- Backend server running (npm run start:dev)
+- PostgreSQL database configured and running
+- Valid database connection
+
+Required Knowledge:
+- Basic understanding of REST APIs
+- Understanding of JWT authentication
+- Knowledge of HTTP methods (GET, POST, PUT, PATCH, DELETE)
+
+================================================================================
+2. SETUP INSTRUCTIONS
+================================================================================
+
+Step 1: Import Postman Collection
+---------------------------------
+1. Open Postman
+2. Click "Import" button (top left)
+3. Select "admin_postman_collection.json" file
+4. Collection will be imported with all endpoints organized
+
+Step 2: Configure Environment Variables
+----------------------------------------
+1. In Postman, click on "Environments" (left sidebar)
+2. Create a new environment or use "Globals"
+3. Add these variables:
+   - base_url: http://localhost:3000 (or your server URL)
+   - access_token: (leave empty, will be auto-filled after login)
+
+Step 3: Start Backend Server
+-----------------------------
+1. Open terminal in backend directory
+2. Run: npm run start:dev
+3. Wait for server to start (should see "Application is running on: http://localhost:3000")
+
+Step 4: Create Initial Platform Admin User
+------------------------------------------
+You need to create a platform admin user first. You can either:
+- Use database migration/seed script
+- Or manually insert into database (see database setup below)
+
+Database Setup (if needed):
+---------------------------
+If you need to create the first admin user manually:
+
+INSERT INTO users (id, email, password_hash, full_name, is_platform_admin, created_at, updated_at)
+VALUES (
+  gen_random_uuid(),
+  'admin@example.com',
+  '$2b$10$YourBcryptHashHere',  -- Use bcrypt to hash 'password123'
+  'Platform Admin',
+  true,
+  NOW(),
+  NOW()
+);
+
+To generate bcrypt hash, you can use Node.js:
+const bcrypt = require('bcrypt');
+bcrypt.hash('password123', 10).then(hash => console.log(hash));
+
+================================================================================
+3. TESTING WORKFLOW
+================================================================================
+
+IMPORTANT: Follow this order for testing!
+
+1. AUTHENTICATION (MUST DO FIRST)
+   └─> Login - Platform Admin
+       └─> Copy the access_token from response
+       └─> Token is automatically saved to environment variable
+
+2. USERS (Platform Admin Only)
+   └─> Create User
+   └─> Get All Users
+   └─> Get User By ID (use ID from Create response)
+   └─> Update User
+   └─> Delete User
+
+3. TENANTS (Platform Admin Only)
+   └─> Create Tenant
+   └─> Get All Tenants
+   └─> Get Tenant By ID (use ID from Create response)
+   └─> Update Tenant
+   └─> Update Tenant Status
+   └─> Delete Tenant
+
+4. TENANT USERS (Platform Admin & TenantAdmin)
+   └─> Create Tenant User (need tenantId and userId)
+   └─> Get All Tenant Users
+   └─> Get Tenant User By ID
+   └─> Update Tenant User
+   └─> Update Tenant User Status
+   └─> Delete Tenant User
+
+5. PAYMENTS (Platform Admin & TenantAdmin)
+   └─> Create Payment (need orderId)
+   └─> Get All Payments
+   └─> Get Payment By ID
+   └─> Update Payment
+   └─> Update Payment Status
+   └─> Delete Payment
+
+6. WEBHOOK EVENTS (Platform Admin & TenantAdmin)
+   └─> Create Webhook Event
+   └─> Get All Webhook Events
+   └─> Get Webhook Event By ID
+   └─> Update Webhook Event
+   └─> Update Webhook Event Status
+   └─> Delete Webhook Event
+
+7. ACTIVITY LOGS (All Authenticated Roles)
+   └─> Create Activity Log
+   └─> Get All Activity Logs
+   └─> Get Activity Log By ID
+   └─> Delete Activity Log
+
+================================================================================
+4. ENDPOINT TESTING GUIDE
+================================================================================
+
+A. AUTHENTICATION
+-----------------
+
+Endpoint: POST /auth/login
+Purpose: Get JWT token for authentication
+
+Request Body:
+{
+  "email": "admin@example.com",
+  "password": "password123"
+}
+
+Expected Response (200 OK):
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+
+IMPORTANT:
+- Token expires after 1 hour
+- Token is automatically saved to environment variable
+- Use this token in Authorization header for all other requests
+
+Testing:
+1. Send request
+2. Check status code is 200
+3. Verify access_token is returned
+4. Token should be saved automatically (check environment variables)
+
+Common Errors:
+- 401 Unauthorized: Wrong email/password
+- 400 Bad Request: Invalid email format or missing fields
+
+
+B. USERS (Platform Admin Only)
+------------------------------
+
+B1. Create User
+Endpoint: POST /admin/users
+Headers: Authorization: Bearer {{access_token}}
+
+Request Body:
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "fullName": "John Doe",
+  "isPlatformAdmin": false
+}
+
+Expected Response (201 Created):
+{
+  "id": "uuid-here",
+  "email": "user@example.com",
+  "fullName": "John Doe",
+  "isPlatformAdmin": false,
+  "createdAt": "2025-01-27T10:00:00.000Z",
+  "updatedAt": "2025-01-27T10:00:00.000Z"
+}
+
+Testing:
+- Save the returned "id" for later requests
+- Verify password is NOT returned (security)
+- Check isPlatformAdmin is set correctly
+
+B2. Get All Users
+Endpoint: GET /admin/users?page=1&limit=10&search=
+
+Query Parameters:
+- page: Page number (default: 1)
+- limit: Items per page (default: 10, max: 100)
+- search: Search by email (optional)
+
+Expected Response (200 OK):
+{
+  "message": "Users retrieved successfully",
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 5,
+    "filters": {
+      "search": null
+    }
+  },
+  "data": [...]
+}
+
+B3. Get User By ID
+Endpoint: GET /admin/users/:id
+Replace :id with actual user ID
+
+Expected Response (200 OK): User object
+Error (404): User with id {id} not found
+
+B4. Update User
+Endpoint: PUT /admin/users/:id
+
+Request Body (all fields optional):
+{
+  "email": "updated@example.com",
+  "password": "newpassword123",  // Will be hashed
+  "fullName": "Updated Name",
+  "isPlatformAdmin": true
+}
+
+B5. Delete User
+Endpoint: DELETE /admin/users/:id
+Expected Response (200 OK): No content
+
+
+C. TENANTS (Platform Admin Only)
+--------------------------------
+
+C1. Create Tenant
+Endpoint: POST /admin/tenants
+
+Request Body:
+{
+  "name": "Tech Conference 2025",
+  "slug": "tech-conf-2025",
+  "brandingSettings": {
+    "primaryColor": "#007bff",
+    "logo": "https://example.com/logo.png"
+  },
+  "status": "active"
+}
+
+Validation Rules:
+- slug: lowercase letters, numbers, hyphens only
+- status: active, suspended, or pending
+
+C2. Get All Tenants
+Query Parameters:
+- page, limit (same as users)
+- search: Search by name
+- status: Filter by status (active, suspended, pending)
+
+C3. Update Tenant Status
+Endpoint: PATCH /admin/tenants/:id/status
+
+Request Body:
+{
+  "status": "suspended"  // or "active", "pending"
+}
+
+
+D. TENANT USERS
+---------------
+
+D1. Create Tenant User
+Endpoint: POST /admin/tenant-users
+
+Request Body:
+{
+  "tenantId": "TENANT_UUID_HERE",
+  "userId": "USER_UUID_HERE",
+  "role": "TenantAdmin",  // or "staff"
+  "status": "active"  // or "inactive", "suspended"
+}
+
+IMPORTANT:
+- You need valid tenantId and userId from previous requests
+- role must be "TenantAdmin" or "staff"
+- This links a user to a tenant with a specific role
+
+D2. Get All Tenant Users
+Query Parameters:
+- tenantId: Filter by tenant
+- userId: Filter by user
+- role: Filter by role (TenantAdmin, staff)
+- status: Filter by status
+
+
+E. PAYMENTS
+-----------
+
+E1. Create Payment
+Endpoint: POST /admin/payments
+
+Request Body:
+{
+  "orderId": "ORDER_UUID_HERE",
+  "provider": "bkash",  // stripe, bkash, nagad, rocket, other
+  "providerReference": "BKASH_TXN_12345",
+  "status": "pending",  // pending, completed, failed, refunded
+  "amountCents": 500000,  // Amount in cents (500000 = 5000.00 BDT)
+  "currency": "BDT",
+  "payload": {
+    "transactionId": "TXN123",
+    "phone": "01712345678"
+  }
+}
+
+Payment Providers:
+- stripe: Stripe payment gateway
+- bkash: bKash mobile banking (Bangladesh)
+- nagad: Nagad mobile banking (Bangladesh)
+- rocket: Rocket mobile banking (Bangladesh)
+- other: Other payment methods
+
+E2. Update Payment Status
+Endpoint: PATCH /admin/payments/:id/status
+
+Request Body:
+{
+  "status": "completed"
+}
+
+This automatically sets processedAt to current timestamp.
+
+
+F. WEBHOOK EVENTS
+-----------------
+
+F1. Create Webhook Event
+Endpoint: POST /admin/webhook-events
+
+Request Body:
+{
+  "provider": "stripe",  // stripe, bkash, nagad, rocket, mailer, other
+  "eventType": "payment.succeeded",
+  "payload": {
+    "id": "evt_123",
+    "type": "payment_intent.succeeded",
+    "data": {...}
+  },
+  "receivedAt": "2025-01-27T10:00:00Z",
+  "status": "pending"  // pending, processed, failed
+}
+
+F2. Update Webhook Event Status
+Endpoint: PATCH /admin/webhook-events/:id/status
+
+Request Body:
+{
+  "status": "processed"  // or "failed"
+}
+
+
+G. ACTIVITY LOGS
+----------------
+
+G1. Create Activity Log
+Endpoint: POST /admin/activity-logs
+
+Request Body:
+{
+  "tenantId": "TENANT_UUID_HERE",  // Optional
+  "actorId": "USER_UUID_HERE",  // Required
+  "action": "user.created",
+  "metadata": {
+    "userId": "USER_UUID_HERE",
+    "email": "user@example.com"
+  }
+}
+
+Activity Logs are immutable (no update endpoint).
+
+================================================================================
+5. COMMON ISSUES & SOLUTIONS
+================================================================================
+
+Issue 1: 401 Unauthorized
+--------------------------
+Error: "Missing Authorization header" or "Invalid or expired token"
+
+Solutions:
+- Make sure you've logged in first
+- Check Authorization header format: "Bearer {token}"
+- Token might be expired (valid for 1 hour)
+- Verify token is saved in environment variable
+
+Issue 2: 403 Forbidden
+----------------------
+Error: "Access denied. Required roles: platform_admin"
+
+Solutions:
+- You're not logged in as platform admin
+- Check user's isPlatformAdmin flag in database
+- Make sure you're using the correct token
+
+Issue 3: 404 Not Found
+----------------------
+Error: "User with id {id} not found"
+
+Solutions:
+- Check if ID exists in database
+- Verify ID format is valid UUID
+- Make sure you're using correct ID from previous create request
+
+Issue 4: 400 Bad Request
+-------------------------
+Error: Validation errors
+
+Solutions:
+- Check request body matches DTO requirements
+- Verify email format is valid
+- Check password is at least 8 characters
+- Verify slug format (lowercase, numbers, hyphens only)
+- Check enum values (status, role, provider) are correct
+
+Issue 5: 500 Internal Server Error
+-----------------------------------
+Error: Server error
+
+Solutions:
+- Check server logs for detailed error
+- Verify database connection
+- Check if required fields are provided
+- Verify foreign key relationships (tenantId, userId exist)
+
+Issue 6: Token Not Saving Automatically
+---------------------------------------
+Solution:
+- Manually copy access_token from login response
+- Paste into environment variable "access_token"
+- Or check Postman test script is working
+
+================================================================================
+6. TEST SCENARIOS
+================================================================================
+
+SCENARIO 1: Complete User Management Flow
+-----------------------------------------
+1. Login as platform admin
+2. Create a new user
+3. Get all users (verify new user appears)
+4. Get user by ID
+5. Update user details
+6. Delete user
+7. Verify user is deleted (404 on get by ID)
+
+SCENARIO 2: Complete Tenant Management Flow
+-------------------------------------------
+1. Login as platform admin
+2. Create a tenant
+3. Get all tenants
+4. Get tenant by ID
+5. Update tenant details
+6. Update tenant status to "suspended"
+7. Update tenant status back to "active"
+8. Delete tenant
+
+SCENARIO 3: Tenant User Assignment Flow
+----------------------------------------
+1. Login as platform admin
+2. Create a user (regular user)
+3. Create a tenant
+4. Create tenant user (link user to tenant as TenantAdmin)
+5. Get all tenant users for that tenant
+6. Update tenant user role to "staff"
+7. Update tenant user status to "suspended"
+8. Delete tenant user
+
+SCENARIO 4: Payment Processing Flow
+-----------------------------------
+1. Login as platform admin
+2. Create a payment (status: pending)
+3. Get all payments (filter by status: pending)
+4. Get payment by ID
+5. Update payment status to "completed"
+6. Verify processedAt is set automatically
+7. Get all payments (filter by status: completed)
+
+SCENARIO 5: Webhook Event Processing Flow
+-----------------------------------------
+1. Login as platform admin
+2. Create webhook event (status: pending)
+3. Get all webhook events
+4. Update webhook event status to "processed"
+5. Verify processedAt is set
+6. Delete webhook event
+
+SCENARIO 6: Activity Logging Flow
+----------------------------------
+1. Login as platform admin
+2. Create an activity log
+3. Get all activity logs
+4. Filter by tenantId
+5. Filter by actorId
+6. Filter by action
+7. Get activity log by ID
+8. Delete activity log
+
+SCENARIO 7: Pagination Testing
+------------------------------
+1. Create multiple records (users, tenants, etc.)
+2. Test pagination:
+   - page=1, limit=5
+   - page=2, limit=5
+   - Verify total count matches
+   - Verify correct items on each page
+
+SCENARIO 8: Search/Filter Testing
+----------------------------------
+1. Create multiple users with different emails
+2. Test search: GET /admin/users?search=example
+3. Verify only matching users returned
+4. Test filters on other endpoints
+
+SCENARIO 9: Error Handling Testing
+-----------------------------------
+1. Try to get non-existent user (should return 404)
+2. Try to create user with invalid email (should return 400)
+3. Try to access without token (should return 401)
+4. Try to access with expired token (should return 401)
+5. Try to access admin route as non-admin (should return 403)
+
+SCENARIO 10: Role-Based Access Testing
+--------------------------------------
+1. Create a regular user (isPlatformAdmin: false)
+2. Create a tenant
+3. Create tenant user (link user to tenant as TenantAdmin)
+4. Login as that user
+5. Try to access /admin/users (should fail - 403)
+6. Try to access /admin/tenant-users (should succeed)
+7. Try to access /admin/payments (should succeed)
+
+================================================================================
+7. TESTING CHECKLIST
+================================================================================
+
+Authentication:
+[ ] Login successful
+[ ] Token saved automatically
+[ ] Token used in subsequent requests
+[ ] Invalid credentials rejected (401)
+[ ] Expired token rejected (401)
+
+Users:
+[ ] Create user successful
+[ ] Get all users with pagination
+[ ] Get user by ID
+[ ] Update user
+[ ] Delete user
+[ ] Search users by email
+[ ] Validation errors handled
+
+Tenants:
+[ ] Create tenant successful
+[ ] Get all tenants with filters
+[ ] Get tenant by ID
+[ ] Update tenant
+[ ] Update tenant status
+[ ] Delete tenant
+[ ] Slug validation works
+
+Tenant Users:
+[ ] Create tenant user successful
+[ ] Get all tenant users with filters
+[ ] Get tenant user by ID
+[ ] Update tenant user
+[ ] Update tenant user status
+[ ] Delete tenant user
+
+Payments:
+[ ] Create payment successful
+[ ] Get all payments with filters
+[ ] Get payment by ID
+[ ] Update payment
+[ ] Update payment status
+[ ] Delete payment
+[ ] Currency defaults to BDT
+
+Webhook Events:
+[ ] Create webhook event successful
+[ ] Get all webhook events with filters
+[ ] Get webhook event by ID
+[ ] Update webhook event
+[ ] Update webhook event status
+[ ] Delete webhook event
+
+Activity Logs:
+[ ] Create activity log successful
+[ ] Get all activity logs with filters
+[ ] Get activity log by ID
+[ ] Delete activity log
+
+Error Handling:
+[ ] 404 for non-existent resources
+[ ] 400 for validation errors
+[ ] 401 for missing/invalid token
+[ ] 403 for insufficient permissions
+
+================================================================================
+8. NOTES
+================================================================================
+
+- All timestamps are in UTC
+- All amounts are in cents (e.g., 500000 = 5000.00 BDT)
+- UUIDs are used for all IDs
+- Passwords are hashed with bcrypt (never returned in responses)
+- JWT tokens expire after 1 hour
+- Pagination defaults: page=1, limit=10
+- Maximum limit: 100 items per page
+
+================================================================================
+END OF TESTING GUIDE
+================================================================================
+

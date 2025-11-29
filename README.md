@@ -1,98 +1,188 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Event Ticketing SaaS Platform (Bangladesh)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A multi-tenant event ticketing platform built with NestJS, TypeORM, and PostgreSQL, designed specifically for the Bangladesh market with BDT currency, local payment methods (bKash, Nagad, Rocket), and BST timezone support.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Implementation Status
 
-## Description
+**⚠️ Current Status: Only Admin Module Implemented**
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+This project has 4 user types, but currently only the **Admin Module** is implemented. Other modules will be developed by team members:
 
-## Project setup
+- ✅ **Admin Module** - COMPLETE (Platform Admin functionality)
+- ⏳ **TenantAdmin Module** - PENDING (to be implemented by team member)
+- ⏳ **Staff Module** - PENDING (to be implemented by team member)
+- ⏳ **Attendee Module** - PENDING (to be implemented by team member)
 
-```bash
-$ npm install
+## Features (Admin Module)
+
+- **Platform Admin Management**: Full CRUD for users, tenants, tenant users
+- **Multi-Tenant Architecture**: Row-level tenancy with tenant isolation
+- **Role-Based Access Control**: JWT authentication with role-based guards
+- **Payment Management**: CRUD operations for payments (Stripe, bKash, Nagad, Rocket)
+- **Webhook Management**: Webhook event tracking and processing
+- **Activity Logging**: Comprehensive audit trail for all operations
+
+## Tech Stack
+
+- **Framework**: NestJS 11
+- **Database**: PostgreSQL with TypeORM
+- **Authentication**: JWT with bcrypt password hashing
+- **Validation**: class-validator with ValidationPipe
+- **Language**: TypeScript
+
+## Project Structure
+
+```
+src/
+├── admin/          # ✅ Admin module (COMPLETE)
+│   ├── admin.controller.ts
+│   ├── admin.service.ts
+│   ├── admin.module.ts
+│   ├── admin.dto.ts
+│   └── *.entity.ts  # User, Tenant, TenantUser, Payment, WebhookEvent, ActivityLog
+│
+├── auth/           # ✅ Authentication module (COMPLETE)
+│   ├── auth.controller.ts
+│   ├── auth.service.ts
+│   ├── auth.module.ts
+│   ├── jwt-auth.guard.ts
+│   ├── roles.guard.ts
+│   └── roles.decorator.ts
+│
+├── tenant-admin/   # ⏳ TenantAdmin module (PENDING - other team member)
+├── staff/          # ⏳ Staff module (PENDING - other team member)
+├── attendee/       # ⏳ Attendee module (PENDING - other team member)
+│
+└── app.module.ts   # Root module
 ```
 
-## Compile and run the project
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v18 or higher)
+- PostgreSQL database
+- npm or yarn
+
+### Installation
 
 ```bash
-# development
-$ npm run start
+# Install dependencies
+npm install
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+# Set up environment variables
+# Create .env file with:
+# DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+# JWT_SECRET=your-secret-key-change-in-production
 ```
 
-## Run tests
+### Running the Application
 
 ```bash
-# unit tests
-$ npm run test
+# Development mode
+npm run start:dev
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+# Production mode
+npm run build
+npm run start:prod
 ```
 
-## Deployment
+## API Endpoints (Currently Implemented)
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### Authentication
+- `POST /auth/login` - User login (returns JWT token with role information)
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Admin Module Routes (Protected - Platform Admin)
+**User Management:**
+- `GET /admin/users` - List all platform users
+- `POST /admin/users` - Create new platform user
+- `GET /admin/users/:id` - Get user by ID
+- `PUT /admin/users/:id` - Update user
+- `DELETE /admin/users/:id` - Delete user
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+**Tenant Management:**
+- `GET /admin/tenants` - List all tenants
+- `POST /admin/tenants` - Create new tenant
+- `GET /admin/tenants/:id` - Get tenant by ID
+- `PUT /admin/tenants/:id` - Update tenant
+- `PATCH /admin/tenants/:id/status` - Update tenant status
+- `DELETE /admin/tenants/:id` - Delete tenant
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+**Tenant User Management:**
+- `GET /admin/tenant-users` - List tenant users (Platform Admin, TenantAdmin)
+- `POST /admin/tenant-users` - Create tenant user (Platform Admin, TenantAdmin)
+- `GET /admin/tenant-users/:id` - Get tenant user by ID
+- `PUT /admin/tenant-users/:id` - Update tenant user
+- `PATCH /admin/tenant-users/:id/status` - Update tenant user status
+- `DELETE /admin/tenant-users/:id` - Delete tenant user
 
-## Resources
+**Payment Management:**
+- `GET /admin/payments` - List payments (Platform Admin, TenantAdmin, Staff)
+- `POST /admin/payments` - Create payment (Platform Admin, TenantAdmin)
+- `GET /admin/payments/:id` - Get payment by ID
+- `PUT /admin/payments/:id` - Update payment
+- `PATCH /admin/payments/:id/status` - Update payment status
+- `DELETE /admin/payments/:id` - Delete payment
 
-Check out a few resources that may come in handy when working with NestJS:
+**Webhook Management:**
+- `GET /admin/webhook-events` - List webhook events (Platform Admin, TenantAdmin, Staff)
+- `POST /admin/webhook-events` - Create webhook event (Platform Admin, TenantAdmin)
+- `GET /admin/webhook-events/:id` - Get webhook event by ID
+- `PUT /admin/webhook-events/:id` - Update webhook event
+- `PATCH /admin/webhook-events/:id/status` - Update webhook event status
+- `DELETE /admin/webhook-events/:id` - Delete webhook event
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+**Activity Logs:**
+- `GET /admin/activity-logs` - List activity logs (All authenticated roles)
+- `POST /admin/activity-logs` - Create activity log (All authenticated roles)
+- `GET /admin/activity-logs/:id` - Get activity log by ID
+- `DELETE /admin/activity-logs/:id` - Delete activity log (Platform Admin, TenantAdmin)
 
-## Support
+**All admin routes require JWT authentication and appropriate role permissions.**
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### Pending Modules (To be implemented by other team members)
+- **TenantAdmin Module**: Event management, ticket types, orders, reports
+- **Staff Module**: Check-in operations, ticket scanning
+- **Attendee Module**: Public event browsing, ticket purchase
 
-## Stay in touch
+## Documentation
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- [Implementation Status](./IMPLEMENTATION_STATUS.md) - Current implementation status and module assignments
+- [Implementation Plan](./event_ticketing_implementation_plan.md) - Detailed project plan and database structure
+- [Backend Architecture](./backend_architecture_and_flow.md) - Architecture, flow, and technical details
+- [Backend Requirements](./backend_requirements.md) - Project requirements and compliance
+
+## User Roles
+
+The platform supports 4 user types:
+
+1. **Platform Admin** (`platform_admin`): ✅ **IMPLEMENTED**
+   - Full system access across all tenants
+   - Manages users, tenants, tenant users
+   - Monitors payments, webhooks, activity logs
+
+2. **Tenant Admin** (`TenantAdmin`): ⏳ **PENDING** (other team member)
+   - Full access to their own tenant
+   - Manages events, ticket types, orders
+   - Views reports and analytics
+
+3. **Staff** (`staff`): ⏳ **PENDING** (other team member)
+   - Limited operations (check-in, read-only views)
+   - Ticket scanning and validation
+   - Attendee support
+
+4. **User/Attendee**: ⏳ **PENDING** (other team member)
+   - Public access (no login required)
+   - Browse events, purchase tickets
+   - View own tickets and QR codes
+
+## Security
+
+- Passwords are hashed using bcrypt
+- JWT tokens expire after 1 hour
+- Role-based access control on all protected routes
+- Input validation using class-validator
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+MIT

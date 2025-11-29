@@ -28,7 +28,7 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
   @MinLength(8)
-  passwordHash: string;
+  password: string;
 
   @IsString()
   @IsNotEmpty()
@@ -48,7 +48,7 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   @MinLength(8)
-  passwordHash?: string;
+  password?: string;
 
   @IsOptional()
   @IsString()
@@ -151,8 +151,9 @@ export class UpdateTenantUserStatusDto {
 
 // Webhook Event DTOs
 export class CreateWebhookEventDto {
-  @IsIn(['stripe', 'mailer', 'other'], {
-    message: 'provider must be one of: stripe, mailer, other',
+  @IsIn(['stripe', 'bkash', 'nagad', 'rocket', 'mailer', 'other'], {
+    message:
+      'provider must be one of: stripe, bkash, nagad, rocket, mailer, other',
   })
   provider: string;
 
@@ -200,8 +201,8 @@ export class CreatePaymentDto {
   @IsNotEmpty()
   orderId: string;
 
-  @IsIn(['stripe', 'paypal', 'other'], {
-    message: 'provider must be one of: stripe, paypal, other',
+  @IsIn(['stripe', 'bkash', 'nagad', 'rocket', 'other'], {
+    message: 'provider must be one of: stripe, bkash, nagad, rocket, other',
   })
   provider: string;
 
@@ -218,10 +219,13 @@ export class CreatePaymentDto {
   @Min(0)
   amountCents: number;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @Length(3, 3)
-  currency: string;
+  @IsIn(['BDT'], {
+    message: 'currency must be BDT (Bangladeshi Taka)',
+  })
+  currency?: string;
 
   @IsOptional()
   @IsDateString()
@@ -361,7 +365,7 @@ export class WebhookEventQueryDto {
   limit?: number;
 
   @IsOptional()
-  @IsIn(['stripe', 'mailer', 'other'])
+  @IsIn(['stripe', 'bkash', 'nagad', 'rocket', 'mailer', 'other'])
   provider?: string;
 
   @IsOptional()
@@ -392,7 +396,7 @@ export class PaymentQueryDto {
   orderId?: string;
 
   @IsOptional()
-  @IsIn(['stripe', 'paypal', 'other'])
+  @IsIn(['stripe', 'bkash', 'nagad', 'rocket', 'other'])
   provider?: string;
 
   @IsOptional()
@@ -426,4 +430,3 @@ export class ActivityLogQueryDto {
   @IsString()
   action?: string;
 }
-

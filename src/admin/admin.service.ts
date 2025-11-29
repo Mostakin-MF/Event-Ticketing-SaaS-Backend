@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, FindOptionsWhere } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import {
   CreateUserDto,
   UpdateUserDto,
@@ -50,9 +51,13 @@ export class AdminService {
 
   // User operations (Platform Users)
   async createUser(createUserDto: CreateUserDto): Promise<UserEntity> {
+    // Generate salt and hash password
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(createUserDto.password, salt);
+
     const user = this.userRepository.create({
       email: createUserDto.email,
-      passwordHash: createUserDto.passwordHash,
+      passwordHash: hashedPassword,
       fullName: createUserDto.fullName,
       isPlatformAdmin: createUserDto.isPlatformAdmin ?? false,
     });
@@ -92,9 +97,26 @@ export class AdminService {
   async getUserById(id: string): Promise<UserEntity> {
     const user = await this.userRepository.findOneBy({ id });
     if (!user) {
-      throw new Error(`User with id ${id} not found`);
+      throw new NotFoundException(`User with id ${id} not found`);
     }
     return user;
+  }
+
+  async findUserByEmail(email: string): Promise<UserEntity | null> {
+    return this.userRepository.findOne({ where: { email } });
+  }
+
+  async findActiveTenantUsersByUserId(
+    userId: string,
+  ): Promise<TenantUserEntity[]> {
+    return this.tenantUserRepository.find({
+      where: {
+        userId,
+        status: 'active',
+      },
+      relations: ['tenant'],
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async updateUser(
@@ -105,8 +127,10 @@ export class AdminService {
     if (updateUserDto.email !== undefined) {
       updateData.email = updateUserDto.email;
     }
-    if (updateUserDto.passwordHash !== undefined) {
-      updateData.passwordHash = updateUserDto.passwordHash;
+    if (updateUserDto.password !== undefined) {
+      // Generate salt and hash new password
+      const salt = await bcrypt.genSalt();
+      updateData.passwordHash = await bcrypt.hash(updateUserDto.password, salt);
     }
     if (updateUserDto.fullName !== undefined) {
       updateData.fullName = updateUserDto.fullName;
@@ -117,7 +141,7 @@ export class AdminService {
     await this.userRepository.update(id, updateData);
     const user = await this.userRepository.findOneBy({ id });
     if (!user) {
-      throw new Error(`User with id ${id} not found`);
+      throw new NotFoundException(`User with id ${id} not found`);
     }
     return user;
   }
@@ -125,7 +149,7 @@ export class AdminService {
   async deleteUser(id: string): Promise<void> {
     const result = await this.userRepository.delete(id);
     if (result.affected === 0) {
-      throw new Error(`User with id ${id} not found`);
+      throw new NotFoundException(`User with id ${id} not found`);
     }
   }
 
@@ -177,7 +201,7 @@ export class AdminService {
   async getTenantById(id: string): Promise<TenantEntity> {
     const tenant = await this.tenantRepository.findOneBy({ id });
     if (!tenant) {
-      throw new Error(`Tenant with id ${id} not found`);
+      throw new NotFoundException(`Tenant with id ${id} not found`);
     }
     return tenant;
   }
@@ -189,7 +213,7 @@ export class AdminService {
     await this.tenantRepository.update(id, updateTenantDto);
     const tenant = await this.tenantRepository.findOneBy({ id });
     if (!tenant) {
-      throw new Error(`Tenant with id ${id} not found`);
+      throw new NotFoundException(`Tenant with id ${id} not found`);
     }
     return tenant;
   }
@@ -201,7 +225,7 @@ export class AdminService {
     await this.tenantRepository.update(id, { status: updateStatusDto.status });
     const tenant = await this.tenantRepository.findOneBy({ id });
     if (!tenant) {
-      throw new Error(`Tenant with id ${id} not found`);
+      throw new NotFoundException(`Tenant with id ${id} not found`);
     }
     return tenant;
   }
@@ -209,7 +233,7 @@ export class AdminService {
   async deleteTenant(id: string): Promise<void> {
     const result = await this.tenantRepository.delete(id);
     if (result.affected === 0) {
-      throw new Error(`Tenant with id ${id} not found`);
+      throw new NotFoundException(`Tenant with id ${id} not found`);
     }
   }
 
@@ -276,7 +300,7 @@ export class AdminService {
       relations: ['tenant', 'user'],
     });
     if (!tenantUser) {
-      throw new Error(`Tenant user with id ${id} not found`);
+      throw new NotFoundException(`Tenant user with id ${id} not found`);
     }
     return tenantUser;
   }
@@ -291,7 +315,7 @@ export class AdminService {
       relations: ['tenant', 'user'],
     });
     if (!tenantUser) {
-      throw new Error(`Tenant user with id ${id} not found`);
+      throw new NotFoundException(`Tenant user with id ${id} not found`);
     }
     return tenantUser;
   }
@@ -308,7 +332,7 @@ export class AdminService {
       relations: ['tenant', 'user'],
     });
     if (!tenantUser) {
-      throw new Error(`Tenant user with id ${id} not found`);
+      throw new NotFoundException(`Tenant user with id ${id} not found`);
     }
     return tenantUser;
   }
@@ -316,7 +340,7 @@ export class AdminService {
   async deleteTenantUser(id: string): Promise<void> {
     const result = await this.tenantUserRepository.delete(id);
     if (result.affected === 0) {
-      throw new Error(`Tenant user with id ${id} not found`);
+      throw new NotFoundException(`Tenant user with id ${id} not found`);
     }
   }
 
@@ -375,7 +399,7 @@ export class AdminService {
   async getWebhookEventById(id: string): Promise<WebhookEventEntity> {
     const webhookEvent = await this.webhookEventRepository.findOneBy({ id });
     if (!webhookEvent) {
-      throw new Error(`Webhook event with id ${id} not found`);
+      throw new NotFoundException(`Webhook event with id ${id} not found`);
     }
     return webhookEvent;
   }
@@ -398,7 +422,7 @@ export class AdminService {
     await this.webhookEventRepository.update(id, updateData);
     const webhookEvent = await this.webhookEventRepository.findOneBy({ id });
     if (!webhookEvent) {
-      throw new Error(`Webhook event with id ${id} not found`);
+      throw new NotFoundException(`Webhook event with id ${id} not found`);
     }
     return webhookEvent;
   }
@@ -418,7 +442,7 @@ export class AdminService {
     await this.webhookEventRepository.update(id, updateData);
     const webhookEvent = await this.webhookEventRepository.findOneBy({ id });
     if (!webhookEvent) {
-      throw new Error(`Webhook event with id ${id} not found`);
+      throw new NotFoundException(`Webhook event with id ${id} not found`);
     }
     return webhookEvent;
   }
@@ -426,7 +450,7 @@ export class AdminService {
   async deleteWebhookEvent(id: string): Promise<void> {
     const result = await this.webhookEventRepository.delete(id);
     if (result.affected === 0) {
-      throw new Error(`Webhook event with id ${id} not found`);
+      throw new NotFoundException(`Webhook event with id ${id} not found`);
     }
   }
 
@@ -440,7 +464,7 @@ export class AdminService {
       providerReference: createPaymentDto.providerReference,
       status: createPaymentDto.status ?? 'pending',
       amountCents: createPaymentDto.amountCents,
-      currency: createPaymentDto.currency,
+      currency: createPaymentDto.currency ?? 'BDT', // Default to BDT (Bangladeshi Taka)
       payload: createPaymentDto.payload,
     };
     if (createPaymentDto.processedAt) {
@@ -491,7 +515,7 @@ export class AdminService {
   async getPaymentById(id: string): Promise<PaymentEntity> {
     const payment = await this.paymentRepository.findOneBy({ id });
     if (!payment) {
-      throw new Error(`Payment with id ${id} not found`);
+      throw new NotFoundException(`Payment with id ${id} not found`);
     }
     return payment;
   }
@@ -514,7 +538,7 @@ export class AdminService {
     await this.paymentRepository.update(id, updateData);
     const payment = await this.paymentRepository.findOneBy({ id });
     if (!payment) {
-      throw new Error(`Payment with id ${id} not found`);
+      throw new NotFoundException(`Payment with id ${id} not found`);
     }
     return payment;
   }
@@ -529,7 +553,7 @@ export class AdminService {
     });
     const payment = await this.paymentRepository.findOneBy({ id });
     if (!payment) {
-      throw new Error(`Payment with id ${id} not found`);
+      throw new NotFoundException(`Payment with id ${id} not found`);
     }
     return payment;
   }
@@ -537,7 +561,7 @@ export class AdminService {
   async deletePayment(id: string): Promise<void> {
     const result = await this.paymentRepository.delete(id);
     if (result.affected === 0) {
-      throw new Error(`Payment with id ${id} not found`);
+      throw new NotFoundException(`Payment with id ${id} not found`);
     }
   }
 
@@ -599,7 +623,7 @@ export class AdminService {
       relations: ['tenant', 'actor'],
     });
     if (!activityLog) {
-      throw new Error(`Activity log with id ${id} not found`);
+      throw new NotFoundException(`Activity log with id ${id} not found`);
     }
     return activityLog;
   }
@@ -607,8 +631,7 @@ export class AdminService {
   async deleteActivityLog(id: string): Promise<void> {
     const result = await this.activityLogRepository.delete(id);
     if (result.affected === 0) {
-      throw new Error(`Activity log with id ${id} not found`);
+      throw new NotFoundException(`Activity log with id ${id} not found`);
     }
   }
 }
-

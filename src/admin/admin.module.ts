@@ -22,6 +22,6 @@ import { ActivityLogEntity } from './activity-log.entity';
   ],
   controllers: [AdminController],
   providers: [AdminService],
+  exports: [AdminService], // Export to allow AuthModule to use it
 })
 export class AdminModule {}
-

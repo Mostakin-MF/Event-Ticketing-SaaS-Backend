@@ -15,7 +15,7 @@ export class PaymentEntity {
 
   @Column({
     type: 'enum',
-    enum: ['stripe', 'paypal', 'other'],
+    enum: ['stripe', 'bkash', 'nagad', 'rocket', 'other'],
   })
   provider: string;
 
@@ -32,7 +32,7 @@ export class PaymentEntity {
   @Column({ name: 'amount_cents', type: 'bigint' })
   amountCents: number;
 
-  @Column({ length: 3 })
+  @Column({ length: 3, default: 'BDT' })
   currency: string;
 
   @Column({ name: 'processed_at', nullable: true })
@@ -44,4 +44,3 @@ export class PaymentEntity {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
-

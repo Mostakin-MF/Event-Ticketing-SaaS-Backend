@@ -1,6 +1,6 @@
-# Event Ticketing SaaS Implementation Plan
+# Event Ticketing SaaS Implementation Plan (Bangladesh)
 
-This document explains the four user types, the database structure, and the main features in straightforward language so the team can use it as an execution blueprint.
+This document explains the four user types, the database structure, and the main features in straightforward language so the team can use it as an execution blueprint. This platform is designed for the Bangladesh market with BDT currency, local payment methods, and Bangladesh-specific features.
 
 ## Core Personas
 
@@ -18,13 +18,13 @@ Think of the database as different notebooks, each keeping track of a part of th
 - **Tenant Users** (`tenant_users`): a simple link that says "this user belongs to this tenant with the role TenantAdmin/staff."
 - **Events** (`events`): every event an organizer creates, including venue, schedule, status, and public slug.
 - **Event Sessions** (`event_sessions`): optional mini-blocks if an event has multiple days or time slots.
-- **Ticket Types** (`ticket_types`): each pricing tier (VIP, GA, Early Bird) with its price, currency, and total quantity.
+- **Ticket Types** (`ticket_types`): each pricing tier (VIP, GA, Early Bird) with its price in BDT (Bangladeshi Taka), and total quantity.
 - **Orders** (`orders`): the shopping cart summary for a buyer (which event, total cost, payment status).
 - **Order Items** (`order_items`): break the order into the exact ticket types and quantities purchased.
 - **Tickets** (`tickets`): one row per seat/QR code so we know each attendee and can mark them checked-in.
-- **Payments** (`payments`): record the Stripe payment intent or charge reference so finance can reconcile.
+- **Payments** (`payments`): record payment transactions (Stripe, bKash, Nagad, Rocket, or other local payment methods) with charge reference so finance can reconcile.
 - **Discount Codes** (`discount_codes`): optional promos; keep the code, expiry, and how many times it was used.
-- **Webhook Events** (`webhook_events`): keep raw Stripe/email callbacks for debugging and retries.
+- **Webhook Events** (`webhook_events`): keep raw payment provider/email callbacks for debugging and retries.
 - **Activity Logs** (`activity_logs`): store "who did what" (e.g., staff checked in a guest, TenantAdmin edited an event).
 
 | Domain | Table | Purpose | Important Columns |
@@ -34,8 +34,8 @@ Think of the database as different notebooks, each keeping track of a part of th
 | Identity | `users` | Global user records | `id`, `email`, `password_hash`, `full_name`, `is_platform_admin` |
 | Events | `events` | Event definitions | `id`, `tenant_id`, `slug`, `status`, `venue`, `start_at`, `end_at` |
 | Events | `event_sessions` | Session blocks for multi-day events | `id`, `event_id`, `start_at`, `end_at`, `title` |
-| Ticketing | `ticket_types` | Pricing tiers | `id`, `event_id`, `name`, `price_cents`, `currency`, `quantity_total`, `quantity_sold` |
-| Orders | `orders` | Overall checkout records | `id`, `tenant_id`, `event_id`, `buyer_email`, `total_cents`, `status`, `payment_intent_id` |
+| Ticketing | `ticket_types` | Pricing tiers | `id`, `event_id`, `name`, `price_cents`, `currency` (BDT), `quantity_total`, `quantity_sold` |
+| Orders | `orders` | Overall checkout records | `id`, `tenant_id`, `event_id`, `buyer_email`, `total_cents` (BDT), `status`, `payment_intent_id` |
 | Orders | `order_items` | Line items under an order | `id`, `order_id`, `ticket_type_id`, `unit_price_cents`, `quantity` |
 | Tickets | `tickets` | Individual QR passes | `id`, `order_id`, `ticket_type_id`, `attendee_name`, `qr_code_payload`, `checked_in_at` |
 | Payments | `payments` | Provider transactions | `id`, `order_id`, `provider`, `provider_reference`, `status`, `payload` |
@@ -50,7 +50,7 @@ Think of the database as different notebooks, each keeping track of a part of th
 - `users` (to manage platform-level accounts and admins).
 - `tenants` (review tenant onboarding, suspend/reactivate tenants).
 - `tenant_users` (see who belongs to each tenant and their role).
-- `webhook_events` (inspect Stripe or mailer callbacks).
+- `webhook_events` (inspect payment provider or mailer callbacks).
 - `payments` (audit payouts and failed charges globally).
 - `activity_logs` (audit actions performed by TenantAdmins/staff).
 
@@ -90,7 +90,7 @@ Think of the database as different notebooks, each keeping track of a part of th
 | `tenants` | `id`, `name`, `slug`, `branding_settings`, `status`, `created_at`, `updated_at` |
 | `tenant_users` | `id`, `tenant_id`, `user_id`, `role`, `status`, `invited_at`, `last_login_at` |
 | `webhook_events` | `id`, `provider`, `event_type`, `payload`, `received_at`, `processed_at`, `status`, `error_message` |
-| `payments` | `id`, `order_id`, `provider`, `provider_reference`, `status`, `amount_cents`, `currency`, `processed_at`, `payload` |
+| `payments` | `id`, `order_id`, `provider` (Stripe/bKash/Nagad/Rocket), `provider_reference`, `status`, `amount_cents` (BDT), `currency` (BDT), `processed_at`, `payload` |
 | `activity_logs` | `id`, `tenant_id`, `actor_id`, `action`, `metadata`, `created_at` |
 
 #### admin Relations
@@ -105,11 +105,11 @@ Think of the database as different notebooks, each keeping track of a part of th
 | Table | Columns |
 | --- | --- |
 | `tenants` | same as above |
-| `events` | `id`, `tenant_id`, `name`, `slug`, `description`, `venue`, `city`, `country`, `start_at`, `end_at`, `status`, `is_public`, `seo_meta`, `created_at`, `updated_at` |
+| `events` | `id`, `tenant_id`, `name`, `slug`, `description`, `venue`, `city` (e.g., Dhaka, Chittagong, Sylhet), `country` (Bangladesh), `start_at`, `end_at` (BST/UTC+6), `status`, `is_public`, `seo_meta`, `created_at`, `updated_at` |
 | `event_sessions` | `id`, `event_id`, `title`, `description`, `start_at`, `end_at` |
-| `ticket_types` | `id`, `event_id`, `name`, `description`, `price_cents`, `currency`, `quantity_total`, `quantity_sold`, `sales_start`, `sales_end`, `status` |
+| `ticket_types` | `id`, `event_id`, `name`, `description`, `price_cents` (BDT), `currency` (BDT), `quantity_total`, `quantity_sold`, `sales_start`, `sales_end` (BST), `status` |
 | `discount_codes` | `id`, `event_id`, `code`, `description`, `max_redemptions`, `times_redeemed`, `discount_type`, `discount_value`, `starts_at`, `expires_at`, `status` |
-| `orders` | `id`, `tenant_id`, `event_id`, `buyer_email`, `buyer_name`, `total_cents`, `currency`, `status`, `payment_intent_id`, `created_at`, `updated_at` |
+| `orders` | `id`, `tenant_id`, `event_id`, `buyer_email`, `buyer_name`, `total_cents` (BDT), `currency` (BDT), `status`, `payment_intent_id`, `created_at`, `updated_at` |
 | `order_items` | `id`, `order_id`, `ticket_type_id`, `unit_price_cents`, `quantity`, `subtotal_cents` |
 | `tickets` | `id`, `order_id`, `ticket_type_id`, `attendee_name`, `attendee_email`, `qr_code_payload`, `qr_signature`, `status`, `checked_in_at`, `seat_label` |
 | `tenant_users` | same as above |
@@ -148,12 +148,12 @@ Think of the database as different notebooks, each keeping track of a part of th
 | --- | --- |
 | `events` | public subset: `slug`, `name`, `description`, `venue`, `start_at`, `end_at`, `status`, `hero_image_url` |
 | `event_sessions` | optional schedule details |
-| `ticket_types` | `name`, `price_cents`, `currency`, `sales_start`, `sales_end`, `status`, `quantity_total`, `quantity_sold` |
-| `orders` | `id`, `tenant_id`, `event_id`, `buyer_email`, `buyer_name`, `total_cents`, `status`, `public_lookup_token` |
-| `order_items` | `ticket_type_id`, `quantity`, `unit_price_cents`, `subtotal_cents` |
+| `ticket_types` | `name`, `price_cents` (BDT), `currency` (BDT), `sales_start`, `sales_end` (BST), `status`, `quantity_total`, `quantity_sold` |
+| `orders` | `id`, `tenant_id`, `event_id`, `buyer_email`, `buyer_name`, `total_cents` (BDT), `status`, `public_lookup_token` |
+| `order_items` | `ticket_type_id`, `quantity`, `unit_price_cents` (BDT), `subtotal_cents` (BDT) |
 | `tickets` | `id`, `order_id`, `ticket_type_id`, `attendee_name`, `qr_code_payload`, `status` |
-| `discount_codes` | `code`, `discount_type`, `discount_value`, `expires_at`, `status` |
-| `payments` | `provider_reference`, `status`, `amount_cents`, `currency` (displayed via order history) |
+| `discount_codes` | `code`, `discount_type`, `discount_value`, `expires_at` (BST), `status` |
+| `payments` | `provider_reference`, `status`, `amount_cents` (BDT), `currency` (BDT) (displayed via order history) |
 
 #### User Relations
 
@@ -171,8 +171,9 @@ Think of the database as different notebooks, each keeping track of a part of th
    - Validation pipes to enforce unique slugs per tenant and safe inventory updates.
    - Organizer dashboards with basic stats.
 3. **Checkout & Orders**
-   - Create orders and order items, reserve inventory, integrate Stripe.
+   - Create orders and order items, reserve inventory, integrate payment providers (Stripe, bKash, Nagad, Rocket).
    - Store payment intents and webhook payloads with idempotent updates.
+   - Support BDT currency and Bangladesh Standard Time (BST, UTC+6) for all transactions.
 4. **Tickets & Check-In**
    - Generate QR codes per ticket, store signed payloads, expose staff check-in APIs.
    - Support manual lookup fallback and offline-friendly responses.
@@ -193,5 +194,44 @@ Think of the database as different notebooks, each keeping track of a part of th
 
 - JWT auth with guards, tenant interceptors, and per-role policies.
 - Pipes enforce email/password standards, slug uniqueness, inventory caps, and webhook signature verification.
+- All prices stored in BDT (Bangladeshi Taka), with timezone handling for BST (UTC+6).
 - Use ConfigModule for secrets, TypeORM migrations, and seed scripts.
 - Automated tests (unit + e2e) plus structured logging for orders, check-ins, and webhooks.
+
+## Bangladesh-Specific Considerations
+
+### Currency & Pricing
+
+- Primary currency: BDT (Bangladeshi Taka)
+- All monetary values stored in BDT (no currency conversion needed for local market)
+- Price display: format as "৳X,XXX" (Bangladeshi Taka symbol)
+
+### Payment Methods
+
+- **International**: Stripe (for international card payments)
+- **Local Mobile Wallets**:
+  - bKash (most popular mobile financial service)
+  - Nagad (government-backed mobile wallet)
+  - Rocket (Dutch-Bangla Bank mobile banking)
+- **Bank Transfers**: Support for local Bangladesh banks
+- Payment provider selection based on user preference and availability
+
+### Location & Timezone
+
+- Default country: Bangladesh
+- Common cities: Dhaka, Chittagong, Sylhet, Rajshahi, Khulna, Barisal, etc.
+- Timezone: Bangladesh Standard Time (BST, UTC+6)
+- All event dates/times stored and displayed in BST
+
+### Localization
+
+- Primary language: English
+- Future support: Bengali (Bangla) language option
+- Date/time formats: DD/MM/YYYY (Bangladesh standard)
+- Phone number format: +880 (Bangladesh country code)
+
+### Network & Performance
+
+- Optimize for Bangladesh network conditions (variable connectivity)
+- Support offline check-in capabilities for venues with poor connectivity
+- Lightweight QR code scanning for mobile devices common in Bangladesh

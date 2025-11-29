@@ -12,7 +12,7 @@ export class WebhookEventEntity {
 
   @Column({
     type: 'enum',
-    enum: ['stripe', 'mailer', 'other'],
+    enum: ['stripe', 'bkash', 'nagad', 'rocket', 'mailer', 'other'],
   })
   provider: string;
 
@@ -41,4 +41,3 @@ export class WebhookEventEntity {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
-

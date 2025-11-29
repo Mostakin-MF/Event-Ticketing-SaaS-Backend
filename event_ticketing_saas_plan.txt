@@ -1,6 +1,6 @@
 ## Event Ticketing SaaS — Unified Project Plan
 
-**Project:** Advanced Web Tech – Event Ticketing SaaS Platform  
+**Project:** Advanced Web Tech – Event Ticketing SaaS Platform (Bangladesh)  
 **Owner:** `<your name>`  
 **Created:** 2025-10-20  
 **Last Updated:** 2025-01-27
@@ -13,7 +13,9 @@
 ### Tech Stack
 - Frontend: Next.js 16 (TypeScript, App Router), Tailwind CSS 4, React 19.2, Axios.
 - Backend: NestJS 11 (TypeScript), REST API, class-validator/transformer, TypeORM (PostgreSQL).
-- Infra: PostgreSQL, JWT auth (HttpOnly cookies), Stripe payments, email provider TBD (SendGrid/AWS SES/Resend).
+- Infra: PostgreSQL, JWT auth (HttpOnly cookies), Payment providers (Stripe, bKash, Nagad, Rocket), email provider TBD (SendGrid/AWS SES/Resend).
+- Currency: BDT (Bangladeshi Taka) as primary currency.
+- Timezone: Bangladesh Standard Time (BST, UTC+6).
 
 ### 1. Vision & Overview
 - Serve organizers, staff, and attendees end-to-end: event creation → checkout → QR scan → reporting.
@@ -25,8 +27,8 @@
 
 ### 2. Functional Requirements
 - Organizer & Team Management: create tenant, invite TenantAdmins/staff, basic branding (logo/colors).
-- Events: draft/publish/archive; details (name, slug, description, venue, dates, timezone, is_public); SEO/meta.
-- Ticket Types & Inventory: multiple tiers; price/currency; quantity_total; prevent oversell.
+- Events: draft/publish/archive; details (name, slug, description, venue, dates, timezone BST/UTC+6, is_public); SEO/meta. Venue locations in Bangladesh cities (Dhaka, Chittagong, Sylhet, etc.).
+- Ticket Types & Inventory: multiple tiers; price in BDT (Bangladeshi Taka); quantity_total; prevent oversell.
 - Checkout & Orders: pending → paid; idempotent updates; order details (buyer email, total, items).
 - Tickets & QR Codes: one ticket per unit; unique QR payload; email delivery; validation rules.
 - Check-in App: camera scanning; invalid/duplicate handling; real-time status; simple offline-tolerant UI.
@@ -55,12 +57,12 @@
 ### 6. Conceptual Data Model
 - Tenant (organizer)
 - User (tenant_id, role)
-- Event (tenant_id, slug, dates, venue, is_public)
-- TicketType (event_id, price, currency, inventory)
-- Order (tenant_id, event_id, buyer_email, total, status, payment_ref)
+- Event (tenant_id, slug, dates in BST/UTC+6, venue in Bangladesh cities, is_public)
+- TicketType (event_id, price in BDT, currency: BDT, inventory)
+- Order (tenant_id, event_id, buyer_email, total in BDT, status, payment_ref)
 - Ticket (order_id, ticket_type_id, attendee_name/email, qr_code, checked_in_at)
 - DiscountCode (event_id, code, limits, redemptions) [later]
-- WebhookEvent (provider, type, payload, processed_at)
+- WebhookEvent (provider: Stripe/bKash/Nagad/Rocket, type, payload, processed_at)
 
 ### 7. Conceptual API Surface
 - Auth: login, logout, me.
@@ -75,8 +77,8 @@
 ### 8. Non-Functional Requirements
 - Performance: public pages ≤ 1.5s TTFB under normal load; smooth camera scanning.
 - Scalability: handle launch spikes and doors-open check-ins.
-- Internationalization: base English; multi-currency later.
-- Browser support: evergreen; mobile Safari/Chrome.
+- Localization: base English with Bengali (Bangla) support; BDT currency; Bangladesh Standard Time (BST, UTC+6).
+- Browser support: evergreen; mobile Safari/Chrome; optimized for Bangladesh network conditions.
 
 ### 9. Security & Compliance
 - Auth: JWT in HttpOnly cookies; role-based access.
@@ -86,15 +88,21 @@
 - Compliance (later): PCI via payment provider; privacy policy and ToS.
 
 ### 10. Payments & Payouts
-- Payments: start with a single provider (e.g., Stripe) for card payments.
+- Payments: support multiple providers for Bangladesh market:
+  - Stripe (international cards)
+  - bKash (mobile financial service)
+  - Nagad (mobile financial service)
+  - Rocket (mobile financial service)
+  - Bank transfers (local banks)
+- All transactions in BDT (Bangladeshi Taka).
 - Refunds: manual flow initially; note in system.
-- Payouts: begin manual to organizers; consider automated connect-style payouts later.
+- Payouts: begin manual to organizers via bank transfer or mobile wallet; consider automated payouts later.
 - Webhooks: verified signatures; idempotent processing; store events for replay.
 
 ### 11. Email & Notifications
 - Transactional emails: order confirmation with tickets (QR), event updates, staff invites/password flows.
-- Deliverability: dedicated sender domain; DKIM/SPF; suppression handling.
-- Templates: reusable and tenant-branded.
+- Deliverability: dedicated sender domain; DKIM/SPF; suppression handling. Consider Bangladesh email provider deliverability (Gmail, Yahoo, local providers).
+- Templates: reusable and tenant-branded. Support for English and future Bengali (Bangla) templates.
 
 ### 12. Analytics & Observability
 - Product analytics: page views (public pages), basic conversion funnel.
@@ -148,7 +156,7 @@
 - [ ] Create basic CRUD APIs for events and ticket management
 - [ ] Set up Axios in frontend for API communication
 - [ ] Implement multi-tenant data isolation
-- [ ] Add Stripe payment integration
+- [ ] Add payment integration (Stripe, bKash, Nagad, Rocket)
 - [ ] Set up email service for ticket delivery
 - [ ] Create QR code generation and validation system
 
@@ -159,16 +167,34 @@
 - ✅ Data Fetching: Axios (confirmed)
 - ✅ Database: PostgreSQL with TypeORM (confirmed)
 - ✅ Authentication: JWT in HttpOnly cookies (confirmed)
-- 🔄 Payment Provider: Stripe (to be implemented)
-- 🔄 Email Service: TBD (SendGrid/AWS SES)
+- 🔄 Payment Providers: Stripe, bKash, Nagad, Rocket (to be implemented)
+- 🔄 Email Service: TBD (SendGrid/AWS SES/Resend)
+- ✅ Currency: BDT (Bangladeshi Taka) - confirmed
+- ✅ Timezone: Bangladesh Standard Time (BST, UTC+6) - confirmed
 
 ### 20. Open Questions / Decisions
-- Q: Hosting choice for API (Render/Railway/Fly)?
-- Q: Email service provider (SendGrid vs AWS SES vs Resend)?
+- Q: Hosting choice for API (Render/Railway/Fly)? Consider Bangladesh-based or nearby regions for latency.
+- Q: Email service provider (SendGrid vs AWS SES vs Resend)? Consider deliverability to Bangladesh email providers.
 - Q: QR code library choice (qrcode vs react-qr-code)?
+- Q: Which payment providers to prioritize? (bKash, Nagad, Rocket integration priority)
 - Decision: Multi-tenant architecture with row-level tenancy using tenant_id
+- Decision: BDT (Bangladeshi Taka) as primary currency
+- Decision: Bangladesh Standard Time (BST, UTC+6) for all event scheduling
 
 ### 21. Deliverables Checklist
 - Project plan (this document) kept current.
 - Architecture diagram, ERD, API contract, and test plan covering checkout, QR validation, and check-in flows.
 - Demo assets: sample tenant with events, working public page + checkout (test mode), exported tickets, and a short screen recording from purchase to QR scan.
+
+### 22. Bangladesh-Specific Implementation Notes
+- **Currency**: All prices, orders, and payments in BDT (Bangladeshi Taka). Display format: ৳X,XXX.
+- **Payment Integration Priority**: 
+  1. bKash (highest priority - most popular)
+  2. Nagad (government-backed, growing)
+  3. Rocket (bank-backed)
+  4. Stripe (for international cards)
+- **Location Data**: Default country set to "Bangladesh". Common cities: Dhaka, Chittagong, Sylhet, Rajshahi, Khulna, Barisal.
+- **Timezone**: All event scheduling and timestamps in Bangladesh Standard Time (BST, UTC+6).
+- **Phone Numbers**: Support +880 country code format.
+- **Network Optimization**: Consider variable connectivity in Bangladesh; implement offline check-in capabilities.
+- **Localization**: Start with English; plan for Bengali (Bangla) language support in future iterations.
