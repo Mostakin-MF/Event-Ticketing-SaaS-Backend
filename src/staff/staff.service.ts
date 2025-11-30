@@ -5,6 +5,8 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+
+
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -16,9 +18,11 @@ import { CreateStaffDto, UpdateStaffDto, CheckinDto  } from './staff.dto';
 import { TicketEntity } from '../entities/ticket.entity';
 import { MailerService } from '../mailer/mailer.service';
 
+
 @Injectable()
 export class StaffService {
   constructor(
+
     @InjectRepository(StaffEntity)
     private readonly staffRepo: Repository<StaffEntity>,
 
@@ -29,6 +33,7 @@ export class StaffService {
     private readonly ticketRepo: Repository<TicketEntity>,
 
     private readonly mailerService: MailerService,
+    
   ) {}
 
   /**

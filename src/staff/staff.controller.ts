@@ -17,7 +17,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StaffGuard } from './staff.guard';
-// import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { StaffService } from './staff.service';
 import { CreateStaffDto, UpdateStaffDto, CheckinDto } from './staff.dto';
 

@@ -10,7 +10,8 @@ import {
   UpdateDateColumn,
   Index,
 } from 'typeorm';
-import { OrderEntity } from '../entities/order.entity';
+
+import { OrderEntity } from './order.entity';
 import { TicketTypeEntity } from '../entities/ticket-type.entity';
 
 export type TicketStatus = 'PENDING' | 'ACTIVE' | 'CANCELLED' | 'USED';
