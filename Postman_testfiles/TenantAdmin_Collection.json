@@ -111,7 +111,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Summer Music Festival 2024\",\n  \"slug\": \"summer-music-festival-2024\",\n  \"description\": \"Annual summer music festival with top artists\",\n  \"venue\": \"Central Park\",\n  \"city\": \"New York\",\n  \"country\": \"USA\",\n  \"start_at\": \"2024-07-15T18:00:00Z\",\n  \"end_at\": \"2024-07-15T23:00:00Z\",\n  \"status\": \"scheduled\"\n}"
+							"raw": "{\n  \"name\": \"Summer Music Festival 2024\",\n  \"slug\": \"summer-music-festival-2024\",\n  \"description\": \"Annual summer music festival with top artists\",\n  \"venue\": \"Central Park\",\n  \"city\": \"Dhaka\",\n  \"country\": \"Bangladesh\",\n  \"start_at\": \"2024-07-15T18:00:00+06:00\",\n  \"end_at\": \"2024-07-15T23:00:00+06:00\",\n  \"status\": \"scheduled\",\n  \"is_public\": true,\n  \"hero_image_url\": \"https://example.com/hero-image.jpg\",\n  \"seo_meta\": {\n    \"title\": \"Summer Music Festival 2024\",\n    \"description\": \"Join us for an amazing music festival\"\n  }\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/tenant-admin/events",
@@ -154,7 +154,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Updated Event Name\",\n  \"status\": \"active\"\n}"
+							"raw": "{\n  \"name\": \"Updated Event Name\",\n  \"status\": \"active\",\n  \"is_public\": true\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/tenant-admin/events/:eventId",
@@ -208,7 +208,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"title\": \"Opening Ceremony\",\n  \"description\": \"Event opening ceremony\",\n  \"start_at\": \"2024-07-15T18:00:00Z\",\n  \"end_at\": \"2024-07-15T19:00:00Z\"\n}"
+							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"title\": \"Opening Ceremony\",\n  \"description\": \"Event opening ceremony\",\n  \"start_at\": \"2024-07-15T18:00:00+06:00\",\n  \"end_at\": \"2024-07-15T19:00:00+06:00\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/tenant-admin/event-sessions",
@@ -307,7 +307,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"name\": \"VIP Ticket\",\n  \"description\": \"VIP access with premium seating\",\n  \"price_taka\": 5000,\n  \"currency\": \"BDT\",\n  \"quantity_total\": 100,\n  \"sales_start\": \"2024-06-01T00:00:00Z\",\n  \"sales_end\": \"2024-07-14T23:59:59Z\",\n  \"status\": \"active\"\n}"
+							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"name\": \"VIP Ticket\",\n  \"description\": \"VIP access with premium seating\",\n  \"price_taka\": 5000,\n  \"currency\": \"BDT\",\n  \"quantity_total\": 100,\n  \"quantity_sold\": 0,\n  \"sales_start\": \"2024-06-01T00:00:00+06:00\",\n  \"sales_end\": \"2024-07-14T23:59:59+06:00\",\n  \"status\": \"active\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/tenant-admin/ticket-types",
@@ -392,7 +392,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"code\": \"SUMMER2024\",\n  \"description\": \"Summer festival discount\",\n  \"max_redemptions\": 50,\n  \"discount_type\": \"percentage\",\n  \"discount_value\": 20,\n  \"starts_at\": \"2024-06-01T00:00:00Z\",\n  \"expires_at\": \"2024-07-14T23:59:59Z\",\n  \"status\": \"active\"\n}"
+							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"code\": \"SUMMER2024\",\n  \"description\": \"Summer festival discount\",\n  \"max_redemptions\": 50,\n  \"times_redeemed\": 0,\n  \"discount_type\": \"percentage\",\n  \"discount_value\": 20,\n  \"starts_at\": \"2024-06-01T00:00:00+06:00\",\n  \"expires_at\": \"2024-07-14T23:59:59+06:00\",\n  \"status\": \"active\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/tenant-admin/discount-codes",
@@ -706,7 +706,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"email\": \"staff@example.com\",\n  \"password\": \"Password@123\",\n  \"fullName\": \"Staff Member\",\n  \"status\": \"active\"\n}"
+							"raw": "{\n  \"email\": \"staff@example.com\",\n  \"password\": \"Password@123\",\n  \"fullName\": \"Staff Member\",\n  \"role\": \"staff\",\n  \"status\": \"active\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/tenant-admin/tenant-users",

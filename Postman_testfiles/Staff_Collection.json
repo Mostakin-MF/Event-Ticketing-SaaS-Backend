@@ -94,8 +94,14 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"fullName\": \"Updated Staff Name\",\n  \"position\": \"SUPERVISOR\",\n  \"phoneNumber\": \"+1234567890\",\n  \"gender\": \"MALE\"\n}"
+							"raw": "{\n  \"fullName\": \"Updated Staff Name\",\n  \"position\": \"SUPERVISOR\",\n  \"phoneNumber\": \"+8801712345678\",\n  \"gender\": \"MALE\"\n}"
 						},
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"url": {
 							"raw": "{{base_url}}/staff/me",
 							"host": ["{{base_url}}"],
@@ -125,8 +131,14 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"email\": \"newstaff@example.com\",\n  \"password\": \"Password@123\",\n  \"fullName\": \"New Staff Member\",\n  \"position\": \"CHECKER\",\n  \"phoneNumber\": \"+1234567890\",\n  \"gender\": \"FEMALE\"\n}"
+							"raw": "{\n  \"email\": \"newstaff@example.com\",\n  \"password\": \"Password@123\",\n  \"fullName\": \"New Staff Member\",\n  \"position\": \"CHECKER\",\n  \"phoneNumber\": \"+8801712345678\",\n  \"gender\": \"FEMALE\"\n}"
 						},
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"url": {
 							"raw": "{{base_url}}/staff/register",
 							"host": ["{{base_url}}"],
@@ -148,6 +160,12 @@
 							"mode": "raw",
 							"raw": "{\n  \"qrPayload\": \"ticket-qr-payload-123\"\n}"
 						},
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"url": {
 							"raw": "{{base_url}}/staff/checkin",
 							"host": ["{{base_url}}"],
@@ -333,8 +351,14 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"action\": \"ticket.checked_in\",\n  \"description\": \"Checked in ticket for event\",\n  \"metadata\": {\n    \"ticketId\": \"ticket-uuid\",\n    \"eventId\": \"event-uuid\"\n  }\n}"
+							"raw": "{\n  \"action\": \"ticket.checked_in\",\n  \"metadata\": {\n    \"ticketId\": \"ticket-uuid\",\n    \"eventId\": \"event-uuid\",\n    \"description\": \"Checked in ticket for event\"\n  }\n}"
 						},
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"url": {
 							"raw": "{{base_url}}/staff/:id/logs",
 							"host": ["{{base_url}}"],

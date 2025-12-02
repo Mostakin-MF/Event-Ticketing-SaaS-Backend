@@ -79,7 +79,12 @@
 					"name": "Create User",
 					"request": {
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password@123\",\n  \"fullName\": \"John Doe\",\n  \"isPlatformAdmin\": false\n}"
@@ -127,7 +132,12 @@
 					"name": "Update User",
 					"request": {
 						"method": "PUT",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"fullName\": \"John Updated\",\n  \"isPlatformAdmin\": false\n}"
@@ -166,7 +176,12 @@
 					"name": "Create Tenant",
 					"request": {
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"name\": \"Event Company Inc\",\n  \"slug\": \"event-company\",\n  \"brandingSettings\": {\n    \"logo\": \"https://example.com/logo.png\",\n    \"primaryColor\": \"#FF5733\"\n  },\n  \"status\": \"active\"\n}"
@@ -214,7 +229,12 @@
 					"name": "Update Tenant",
 					"request": {
 						"method": "PUT",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"name\": \"Updated Company Name\",\n  \"slug\": \"updated-slug\"\n}"
@@ -272,7 +292,12 @@
 					"name": "Create Tenant User",
 					"request": {
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"tenantId\": \"tenant-uuid-here\",\n  \"userId\": \"user-uuid-here\",\n  \"role\": \"TenantAdmin\",\n  \"status\": \"active\"\n}"
@@ -321,7 +346,12 @@
 					"name": "Update Tenant User",
 					"request": {
 						"method": "PUT",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"role\": \"staff\",\n  \"status\": \"active\"\n}"
@@ -379,10 +409,15 @@
 					"name": "Create Webhook Event",
 					"request": {
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"eventType\": \"order.completed\",\n  \"payload\": {\"orderId\": \"123\"},\n  \"status\": \"pending\"\n}"
+							"raw": "{\n  \"provider\": \"stripe\",\n  \"eventType\": \"payment.succeeded\",\n  \"payload\": {\n    \"orderId\": \"order-uuid-here\",\n    \"amount\": 500000\n  },\n  \"status\": \"pending\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/admin/webhook-events",
@@ -426,10 +461,15 @@
 					"name": "Update Webhook Event",
 					"request": {
 						"method": "PUT",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"status\": \"completed\"\n}"
+							"raw": "{\n  \"status\": \"processed\",\n  \"errorMessage\": null\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/admin/webhook-events/:id",
@@ -445,10 +485,15 @@
 					"name": "Update Webhook Event Status",
 					"request": {
 						"method": "PATCH",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"status\": \"failed\"\n}"
+							"raw": "{\n  \"status\": \"failed\",\n  \"errorMessage\": \"Processing error\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/admin/webhook-events/:id/status",
@@ -484,10 +529,15 @@
 					"name": "Create Payment",
 					"request": {
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"orderId\": \"order-uuid-here\",\n  \"amount\": 5000,\n  \"currency\": \"BDT\",\n  \"paymentMethod\": \"card\",\n  \"status\": \"pending\"\n}"
+							"raw": "{\n  \"orderId\": \"order-uuid-here\",\n  \"provider\": \"bkash\",\n  \"providerReference\": \"TRX123456789\",\n  \"amountCents\": 500000,\n  \"currency\": \"BDT\",\n  \"status\": \"pending\",\n  \"payload\": {\n    \"transaction_id\": \"TRX123456789\"\n  }\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/admin/payments",
@@ -531,10 +581,15 @@
 					"name": "Update Payment",
 					"request": {
 						"method": "PUT",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"status\": \"completed\"\n}"
+							"raw": "{\n  \"status\": \"completed\",\n  \"processedAt\": \"2024-07-15T18:00:00Z\",\n  \"payload\": {\n    \"transaction_id\": \"TRX123456789\"\n  }\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/admin/payments/:id",
@@ -550,7 +605,12 @@
 					"name": "Update Payment Status",
 					"request": {
 						"method": "PATCH",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"status\": \"failed\"\n}"
@@ -589,10 +649,15 @@
 					"name": "Create Activity Log",
 					"request": {
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"userId\": \"user-uuid-here\",\n  \"action\": \"user.created\",\n  \"description\": \"User account created\",\n  \"metadata\": {\"ip\": \"192.168.1.1\"}\n}"
+							"raw": "{\n  \"tenantId\": \"tenant-uuid-here\",\n  \"actorId\": \"user-uuid-here\",\n  \"action\": \"user.created\",\n  \"metadata\": {\n    \"ip\": \"192.168.1.1\",\n    \"description\": \"User account created\"\n  }\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/admin/activity-logs",

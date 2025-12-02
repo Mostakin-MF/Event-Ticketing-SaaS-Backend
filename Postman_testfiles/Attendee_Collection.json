@@ -1,0 +1,240 @@
+{
+	"info": {
+		"_postman_id": "attendee-collection",
+		"name": "Attendee API Collection",
+		"description": "Complete API collection for Attendees (public users). No authentication required for browsing events. Email verification required for order/ticket lookup.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "event_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "order_id",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Events",
+			"item": [
+				{
+					"name": "Get All Public Events",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/attendee/events",
+							"host": ["{{base_url}}"],
+							"path": ["attendee", "events"]
+						}
+					}
+				},
+				{
+					"name": "Get Event By Slug",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('event_id', jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/attendee/events/slug/:slug",
+							"host": ["{{base_url}}"],
+							"path": ["attendee", "events", "slug", ":slug"],
+							"variable": [
+								{"key": "slug", "value": "summer-music-festival-2024"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Event By ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('event_id', jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/attendee/events/:id",
+							"host": ["{{base_url}}"],
+							"path": ["attendee", "events", ":id"],
+							"variable": [
+								{"key": "id", "value": "{{event_id}}"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Ticket Types For Event",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/attendee/events/:eventId/ticket-types",
+							"host": ["{{base_url}}"],
+							"path": ["attendee", "events", ":eventId", "ticket-types"],
+							"variable": [
+								{"key": "eventId", "value": "{{event_id}}"}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Discount Codes",
+			"item": [
+				{
+					"name": "Validate Discount Code",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"code\": \"SUMMER2024\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/attendee/discount-codes/validate",
+							"host": ["{{base_url}}"],
+							"path": ["attendee", "discount-codes", "validate"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Checkout",
+			"item": [
+				{
+					"name": "Create Order (Checkout)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201 || pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('order_id', jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"buyer_email\": \"buyer@example.com\",\n  \"buyer_name\": \"John Buyer\",\n  \"items\": [\n    {\n      \"ticket_type_id\": \"ticket-type-uuid-here\",\n      \"quantity\": 2\n    }\n  ],\n  \"discount_code\": \"SUMMER2024\",\n  \"payment_provider\": \"bkash\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/attendee/checkout",
+							"host": ["{{base_url}}"],
+							"path": ["attendee", "checkout"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Orders",
+			"item": [
+				{
+					"name": "Get Orders By Email",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/attendee/orders?email=buyer@example.com",
+							"host": ["{{base_url}}"],
+							"path": ["attendee", "orders"],
+							"query": [
+								{"key": "email", "value": "buyer@example.com"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Order By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/attendee/orders/:orderId?email=buyer@example.com",
+							"host": ["{{base_url}}"],
+							"path": ["attendee", "orders", ":orderId"],
+							"query": [
+								{"key": "email", "value": "buyer@example.com"}
+							],
+							"variable": [
+								{"key": "orderId", "value": "{{order_id}}"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Tickets For Order",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/attendee/orders/:orderId/tickets?email=buyer@example.com",
+							"host": ["{{base_url}}"],
+							"path": ["attendee", "orders", ":orderId", "tickets"],
+							"query": [
+								{"key": "email", "value": "buyer@example.com"}
+							],
+							"variable": [
+								{"key": "orderId", "value": "{{order_id}}"}
+							]
+						}
+					}
+				}
+			]
+		}
+	]
+}
+
