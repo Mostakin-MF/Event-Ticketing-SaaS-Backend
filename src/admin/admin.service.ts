@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, FindOptionsWhere } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -61,7 +61,16 @@ export class AdminService {
       fullName: createUserDto.fullName,
       isPlatformAdmin: createUserDto.isPlatformAdmin ?? false,
     });
-    return this.userRepository.save(user);
+
+    
+    try {
+        return await this.userRepository.save(user);
+    } catch (error: any) {
+        if (error.code === '23505') { // Postgres unique violation code
+            throw new ConflictException('User with this email already exists');
+        }
+        throw error;
+    }
   }
 
   async registerAdmin(createAdminDto: any): Promise<UserEntity> {
@@ -83,14 +92,27 @@ export class AdminService {
   async getAllUsers(query: UserQueryDto) {
     const { page = 1, limit = 10, search } = query;
     const skip = (page - 1) * limit;
-    const where: FindOptionsWhere<UserEntity> = {};
 
+    console.log('getAllUsers Query:', query);
+
+    const whereCondition: any = {};
+    if (query.isPlatformAdmin !== undefined) {
+        // Handle potential string 'true'/'false' from query params
+        const isAdmin = String(query.isPlatformAdmin) === 'true';
+        whereCondition.isPlatformAdmin = isAdmin;
+        console.log(`Filtering by isPlatformAdmin: ${isAdmin}`); // Debug log
+    }
+    
+    let finalWhere: any = whereCondition;
     if (search) {
-      where.email = Like(`%${search}%`);
+        finalWhere = [
+            { ...whereCondition, email: Like(`%${search}%`) },
+            { ...whereCondition, fullName: Like(`%${search}%`) }
+        ];
     }
 
     const [data, total] = await this.userRepository.findAndCount({
-      where,
+      where: finalWhere,
       skip,
       take: limit,
       order: { createdAt: 'DESC' },
@@ -268,30 +290,39 @@ export class AdminService {
   }
 
   async getAllTenantUsers(query: TenantUserQueryDto) {
-    const { page = 1, limit = 10, tenantId, userId, role, status } = query;
+    const { page = 1, limit = 10, tenantId, userId, role, status, search } = query;
     const skip = (page - 1) * limit;
-    const where: FindOptionsWhere<TenantUserEntity> = {};
+
+    const queryBuilder = this.tenantUserRepository.createQueryBuilder('tenantUser')
+        .leftJoinAndSelect('tenantUser.tenant', 'tenant')
+        .leftJoinAndSelect('tenantUser.user', 'user');
 
     if (tenantId) {
-      where.tenantId = tenantId;
+        queryBuilder.andWhere('tenantUser.tenantId = :tenantId', { tenantId });
     }
     if (userId) {
-      where.userId = userId;
+        queryBuilder.andWhere('tenantUser.userId = :userId', { userId });
     }
     if (role) {
-      where.role = role;
+        queryBuilder.andWhere('tenantUser.role = :role', { role });
     }
     if (status) {
-      where.status = status;
+        queryBuilder.andWhere('tenantUser.status = :status', { status });
     }
 
-    const [data, total] = await this.tenantUserRepository.findAndCount({
-      where,
-      skip,
-      take: limit,
-      relations: ['tenant', 'user'],
-      order: { createdAt: 'DESC' },
-    });
+    if (search) {
+        queryBuilder.andWhere(
+            '(user.email LIKE :search OR user.fullName LIKE :search OR tenant.name LIKE :search)',
+            { search: `%${search}%` }
+        );
+    }
+
+    queryBuilder
+        .skip(skip)
+        .take(limit)
+        .orderBy('tenantUser.createdAt', 'DESC');
+
+    const [data, total] = await queryBuilder.getManyAndCount();
 
     return {
       message: 'Tenant users retrieved successfully',
@@ -660,16 +691,30 @@ export class AdminService {
     const { sum } = await this.paymentRepository
       .createQueryBuilder('payment')
       .select('SUM(payment.amountCents)', 'sum')
-      .where('payment.status = :status', { status: 'succeeded' })
+      .where('payment.status = :status', { status: 'completed' })
       .getRawOne();
 
     const totalRevenue = sum ? parseInt(sum) / 100 : 0; // Convert cents to main currency unit
+
+    // Calculate System Health based on payment success rate
+    const totalPayments = await this.paymentRepository.count();
+    const failedPayments = await this.paymentRepository.count({
+        where: { status: 'failed' }
+    });
+    
+    let healthStatus = 'Operational';
+    if (totalPayments > 0) {
+        const failureRate = failedPayments / totalPayments;
+        if (failureRate > 0.1) { // More than 10% failure
+            healthStatus = 'Degraded';
+        }
+    }
 
     return {
       activeTenants: totalTenants,
       totalUsers: totalUsers,
       totalRevenue: totalRevenue,
-      systemHealth: '99.9%', // Mocked for now, or implement real health check logic
+      systemHealth: healthStatus,
     };
   }
 }

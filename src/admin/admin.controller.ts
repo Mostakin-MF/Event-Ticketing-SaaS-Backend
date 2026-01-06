@@ -49,7 +49,7 @@ export class AdminController {
   // Public endpoint for Admin Registration
   @Public()
   @Post('register')
-  @UsePipes(new ValidationPipe())
+
   async registerAdmin(@Body() createAdminDto: any) { // Type should be CreateAdminDto but importing to avoid circular dep issues quickly
      return this.adminService.registerAdmin(createAdminDto);
   }
@@ -63,14 +63,12 @@ export class AdminController {
 
   @Post('users')
   @Roles('platform_admin')
-  @UsePipes(new ValidationPipe())
   createUser(@Body() createUserDto: CreateUserDto) {
     return this.adminService.createUser(createUserDto);
   }
 
   @Get('users')
   @Roles('platform_admin')
-  @UsePipes(new ValidationPipe())
   getAllUsers(@Query() query: UserQueryDto) {
     return this.adminService.getAllUsers(query);
   }
@@ -83,7 +81,7 @@ export class AdminController {
 
   @Put('users/:id')
   @Roles('platform_admin')
-  @UsePipes(new ValidationPipe())
+
   async updateUser(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
@@ -100,14 +98,14 @@ export class AdminController {
   // Tenant endpoints - Platform Admin only
   @Post('tenants')
   @Roles('platform_admin')
-  @UsePipes(new ValidationPipe())
+
   createTenant(@Body() createTenantDto: CreateTenantDto) {
     return this.adminService.createTenant(createTenantDto);
   }
 
   @Get('tenants')
   @Roles('platform_admin')
-  @UsePipes(new ValidationPipe())
+
   getAllTenants(@Query() query: TenantQueryDto) {
     return this.adminService.getAllTenants(query);
   }
@@ -120,7 +118,7 @@ export class AdminController {
 
   @Put('tenants/:id')
   @Roles('platform_admin')
-  @UsePipes(new ValidationPipe())
+
   updateTenant(
     @Param('id') id: string,
     @Body() updateTenantDto: UpdateTenantDto,
@@ -130,7 +128,7 @@ export class AdminController {
 
   @Patch('tenants/:id/status')
   @Roles('platform_admin')
-  @UsePipes(new ValidationPipe())
+
   updateTenantStatus(
     @Param('id') id: string,
     @Body() updateStatusDto: UpdateTenantStatusDto,
@@ -147,14 +145,13 @@ export class AdminController {
   // Tenant User endpoints - Platform Admin and TenantAdmin
   @Post('tenant-users')
   @Roles('platform_admin', 'TenantAdmin')
-  @UsePipes(new ValidationPipe())
+
   createTenantUser(@Body() createTenantUserDto: CreateTenantUserDto) {
     return this.adminService.createTenantUser(createTenantUserDto);
   }
 
   @Get('tenant-users')
   @Roles('platform_admin', 'TenantAdmin')
-  @UsePipes(new ValidationPipe())
   getAllTenantUsers(@Query() query: TenantUserQueryDto) {
     return this.adminService.getAllTenantUsers(query);
   }
@@ -167,7 +164,7 @@ export class AdminController {
 
   @Put('tenant-users/:id')
   @Roles('platform_admin', 'TenantAdmin')
-  @UsePipes(new ValidationPipe())
+
   updateTenantUser(
     @Param('id') id: string,
     @Body() updateTenantUserDto: UpdateTenantUserDto,
@@ -177,7 +174,7 @@ export class AdminController {
 
   @Patch('tenant-users/:id/status')
   @Roles('platform_admin', 'TenantAdmin')
-  @UsePipes(new ValidationPipe())
+
   updateTenantUserStatus(
     @Param('id') id: string,
     @Body() updateStatusDto: UpdateTenantUserStatusDto,
@@ -194,14 +191,14 @@ export class AdminController {
   // Webhook Event endpoints - Platform Admin and TenantAdmin
   @Post('webhook-events')
   @Roles('platform_admin', 'TenantAdmin')
-  @UsePipes(new ValidationPipe())
+
   createWebhookEvent(@Body() createWebhookEventDto: CreateWebhookEventDto) {
     return this.adminService.createWebhookEvent(createWebhookEventDto);
   }
 
   @Get('webhook-events')
   @Roles('platform_admin', 'TenantAdmin', 'staff')
-  @UsePipes(new ValidationPipe())
+
   getAllWebhookEvents(@Query() query: WebhookEventQueryDto) {
     return this.adminService.getAllWebhookEvents(query);
   }
@@ -214,7 +211,7 @@ export class AdminController {
 
   @Put('webhook-events/:id')
   @Roles('platform_admin', 'TenantAdmin')
-  @UsePipes(new ValidationPipe())
+
   updateWebhookEvent(
     @Param('id') id: string,
     @Body() updateWebhookEventDto: UpdateWebhookEventDto,
@@ -224,7 +221,7 @@ export class AdminController {
 
   @Patch('webhook-events/:id/status')
   @Roles('platform_admin', 'TenantAdmin')
-  @UsePipes(new ValidationPipe())
+
   updateWebhookEventStatus(
     @Param('id') id: string,
     @Body() updateStatusDto: UpdateWebhookEventStatusDto,
@@ -241,14 +238,14 @@ export class AdminController {
   // Payment endpoints - Platform Admin and TenantAdmin
   @Post('payments')
   @Roles('platform_admin', 'TenantAdmin')
-  @UsePipes(new ValidationPipe())
+
   createPayment(@Body() createPaymentDto: CreatePaymentDto) {
     return this.adminService.createPayment(createPaymentDto);
   }
 
   @Get('payments')
   @Roles('platform_admin', 'TenantAdmin', 'staff')
-  @UsePipes(new ValidationPipe())
+
   getAllPayments(@Query() query: PaymentQueryDto) {
     return this.adminService.getAllPayments(query);
   }
@@ -261,7 +258,7 @@ export class AdminController {
 
   @Put('payments/:id')
   @Roles('platform_admin', 'TenantAdmin')
-  @UsePipes(new ValidationPipe())
+
   updatePayment(
     @Param('id') id: string,
     @Body() updatePaymentDto: UpdatePaymentDto,
@@ -271,7 +268,7 @@ export class AdminController {
 
   @Patch('payments/:id/status')
   @Roles('platform_admin', 'TenantAdmin')
-  @UsePipes(new ValidationPipe())
+
   updatePaymentStatus(
     @Param('id') id: string,
     @Body() updateStatusDto: UpdatePaymentStatusDto,
@@ -288,14 +285,14 @@ export class AdminController {
   // Activity Log endpoints - All authenticated roles (read), Platform Admin and TenantAdmin (write)
   @Post('activity-logs')
   @Roles('platform_admin', 'TenantAdmin', 'staff')
-  @UsePipes(new ValidationPipe())
+
   createActivityLog(@Body() createActivityLogDto: CreateActivityLogDto) {
     return this.adminService.createActivityLog(createActivityLogDto);
   }
 
   @Get('activity-logs')
   @Roles('platform_admin', 'TenantAdmin', 'staff')
-  @UsePipes(new ValidationPipe())
+
   getAllActivityLogs(@Query() query: ActivityLogQueryDto) {
     return this.adminService.getAllActivityLogs(query);
   }

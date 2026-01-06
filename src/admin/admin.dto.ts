@@ -17,7 +17,7 @@ import {
   IsDateString,
   Length,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 // User DTOs (Platform Users)
 export class CreateUserDto {
@@ -294,6 +294,10 @@ export class UserQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @IsString()
+  isPlatformAdmin?: string;
 }
 
 export class TenantQueryDto {
@@ -348,6 +352,10 @@ export class TenantUserQueryDto {
   @IsOptional()
   @IsIn(['active', 'inactive', 'suspended'])
   status?: string;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
 }
 
 export class WebhookEventQueryDto {
