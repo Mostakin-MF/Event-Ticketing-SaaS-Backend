@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { StaffService } from './staff.service';
 import { ActivityLogEntity } from '../admin/activity-log.entity';
+import { IncidentEntity } from './incident.entity';
 import {
   Event,
   TicketType,
@@ -18,6 +19,7 @@ import { TenantUserEntity } from '../admin/tenant-user.entity';
   imports: [
     TypeOrmModule.forFeature([
       StaffEntity,
+      IncidentEntity,
       ActivityLogEntity,
       Ticket,
       Event,
@@ -32,4 +34,4 @@ import { TenantUserEntity } from '../admin/tenant-user.entity';
   providers: [StaffService],
   exports: [StaffService],
 })
-export class StaffModule {}
+export class StaffModule { }

@@ -6,7 +6,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
@@ -18,7 +18,7 @@ export class AuthController {
       sameSite: 'lax',
       path: '/',
     });
-    return { 
+    return {
       message: 'Login successful',
       user: user // Return user details for frontend redirection
     };

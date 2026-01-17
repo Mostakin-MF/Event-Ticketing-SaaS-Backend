@@ -42,7 +42,7 @@ import { TicketsModule } from './tickets/tickets.module';
       host: 'localhost',
       port: 5432,
       username: 'postgres',
-      password: '1234',
+      password: 'root',
       database: 'Saas',
       autoLoadEntities: true,
       synchronize: true,
@@ -53,4 +53,4 @@ import { TicketsModule } from './tickets/tickets.module';
   controllers: [PublicController],
   providers: [],
 })
-export class AppModule {}
+export class AppModule { }

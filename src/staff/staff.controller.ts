@@ -24,7 +24,7 @@ import { CreateStaffDto, UpdateStaffDto, CheckinDto } from './staff.dto';
 @Controller('staff')
 @UseGuards(JwtAuthGuard)
 export class StaffController {
-  constructor(private readonly staffService: StaffService) {}
+  constructor(private readonly staffService: StaffService) { }
 
   /**
    * STAFF MANAGEMENT ROUTES
@@ -55,7 +55,7 @@ export class StaffController {
   @Get('me')
   @HttpCode(HttpStatus.OK)
   async getCurrentStaff(@CurrentUser() user: any) {
-    const staff = await this.staffService.getCurrentStaff(user.id);
+    const staff = await this.staffService.getCurrentStaff(user.sub);
 
     return {
       statusCode: 200,
@@ -73,7 +73,7 @@ export class StaffController {
     @Body() updateStaffDto: UpdateStaffDto,
   ) {
     const staff = await this.staffService.updateStaffProfile(
-      user.id,
+      user.sub,
       updateStaffDto,
     );
 
@@ -92,7 +92,7 @@ export class StaffController {
     @CurrentUser() user: any,
     @Query('email') newEmail: string,
   ) {
-    const staff = await this.staffService.updateStaffEmail(user.id, newEmail);
+    const staff = await this.staffService.updateStaffEmail(user.sub, newEmail);
 
     return {
       statusCode: 200,
@@ -129,7 +129,7 @@ export class StaffController {
     @Body() checkinDto: CheckinDto,
   ) {
     // Use staff ID from current user context
-    const result = await this.staffService.checkInTicket(user.id, checkinDto);
+    const result = await this.staffService.checkInTicket(user.sub, checkinDto);
 
     return {
       statusCode: 200,
@@ -172,6 +172,35 @@ export class StaffController {
   /**
    * ACTIVITY LOG ROUTES (1:N Staff → ActivityLogs)
    */
+
+  // GET /staff/logs
+  @Get('logs')
+  @HttpCode(HttpStatus.OK)
+  async getTenantActivityLogs(
+    @CurrentUser() user: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('onlyMe') onlyMe?: string,
+  ) {
+    const pageNumber = page ? parseInt(page, 10) || 1 : 1;
+    const limitNumber = limit ? parseInt(limit, 10) || 20 : 20;
+
+    const result = await this.staffService.getTenantActivityLogs(
+      user.tenantId,
+      pageNumber,
+      limitNumber,
+      onlyMe === 'true' ? user.sub : undefined,
+    );
+
+    return {
+      statusCode: 200,
+      message: 'Tenant activity logs retrieved successfully',
+      data: result.data,
+      total: result.total,
+      page: pageNumber,
+      limit: limitNumber,
+    };
+  }
 
   // GET /staff/:id/logs
   @Get(':id/logs')
@@ -242,6 +271,65 @@ export class StaffController {
     return {
       statusCode: 200,
       message: result.message,
+    };
+  }
+
+  /**
+   * INCIDENT ROUTES (1:N Staff → Incidents)
+   */
+
+  // GET /staff/incidents
+  @Get('incidents')
+  @HttpCode(HttpStatus.OK)
+  async getTenantIncidents(
+    @CurrentUser() user: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('onlyMe') onlyMe?: string,
+  ) {
+    const pageNumber = page ? parseInt(page, 10) || 1 : 1;
+    const limitNumber = limit ? parseInt(limit, 10) || 20 : 20;
+
+    const result = await this.staffService.getTenantIncidents(
+      user.tenantId,
+      pageNumber,
+      limitNumber,
+      onlyMe === 'true' ? user.sub : undefined,
+    );
+
+    return {
+      statusCode: 200,
+      message: 'Incidents retrieved successfully',
+      data: result.data,
+      total: result.total,
+      page: pageNumber,
+      limit: limitNumber,
+    };
+  }
+
+  // POST /staff/incidents
+  @Post('incidents')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  @HttpCode(HttpStatus.CREATED)
+  async createIncident(
+    @CurrentUser() user: any,
+    @Body()
+    incidentData: {
+      type: string;
+      description: string;
+    },
+  ) {
+    const incident = await this.staffService.createIncident(
+      user.sub,
+      user.tenantId,
+      incidentData.type,
+      incidentData.description,
+    );
+
+    return {
+      statusCode: 201,
+      message: 'Incident reported successfully',
+      data: incident,
     };
   }
 

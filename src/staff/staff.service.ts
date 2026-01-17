@@ -13,6 +13,7 @@ import { MailerService } from '@nestjs-modules/mailer';
 import * as bcrypt from 'bcrypt';
 
 import { StaffEntity } from './staff.entity';
+import { IncidentEntity } from './incident.entity';
 import { ActivityLogEntity } from '../admin/activity-log.entity';
 import { CreateStaffDto, UpdateStaffDto, CheckinDto } from './staff.dto';
 
@@ -30,6 +31,9 @@ export class StaffService {
   constructor(
     @InjectRepository(StaffEntity)
     private readonly staffRepo: Repository<StaffEntity>,
+
+    @InjectRepository(IncidentEntity)
+    private readonly incidentRepo: Repository<IncidentEntity>,
 
     @InjectRepository(ActivityLogEntity)
     private readonly activityLogRepo: Repository<ActivityLogEntity>,
@@ -53,7 +57,7 @@ export class StaffService {
     private readonly tenantUserRepo: Repository<TenantUserEntity>,
 
     private readonly mailerService: MailerService,
-  ) {}
+  ) { }
 
   /**
    * =====================================================
@@ -533,6 +537,32 @@ export class StaffService {
    */
 
   /**
+   * Get all logs for a tenant.
+   * Called from: GET /staff/logs
+   */
+  async getTenantActivityLogs(
+    tenantId: string,
+    page: number,
+    limit: number,
+    actorId?: string,
+  ): Promise<{ data: ActivityLogEntity[]; total: number }> {
+    const whereCondition: any = { tenantId };
+    if (actorId) {
+      whereCondition.actorId = actorId;
+    }
+
+    const [logs, total] = await this.activityLogRepo.findAndCount({
+      where: whereCondition,
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+      relations: ['actor'], // Include who reported it
+    });
+
+    return { data: logs, total };
+  }
+
+  /**
    * Get logs for a staff member.
    * Called from: GET /staff/:id/logs
    */
@@ -547,7 +577,7 @@ export class StaffService {
     }
 
     const [logs, total] = await this.activityLogRepo.findAndCount({
-      where: { actorId: staffId, tenantId: staff.tenantId },
+      where: { actorId: staff.userId, tenantId: staff.tenantId },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -573,10 +603,11 @@ export class StaffService {
 
     const log = this.activityLogRepo.create({
       tenantId: staff.tenantId,
-      actorId: staffId,
+      actorId: staff.userId, // MUST be userId to satisfy FK to users table
       action,
       metadata: {
         description,
+        status: 'PENDING', // Default status for reported incidents
         ...(metadata || {}),
       },
     });
@@ -598,6 +629,84 @@ export class StaffService {
     await this.activityLogRepo.remove(log);
 
     return { message: 'Activity log deleted successfully' };
+  }
+
+  /**
+   * =====================================================
+   * INCIDENT MANAGEMENT METHODS (Using dedicated table)
+   * =====================================================
+   */
+
+  /**
+   * Get all incidents for a tenant.
+   */
+  async getTenantIncidents(
+    tenantId: string,
+    page: number,
+    limit: number,
+    userId?: string,
+  ): Promise<{ data: any[]; total: number }> {
+    const whereCondition: any = { tenantId };
+
+    // If userId (from sub) is provided, we need to find the staff record first
+    if (userId) {
+      const staff = await this.staffRepo.findOne({ where: { userId, tenantId } });
+      if (staff) {
+        whereCondition.staffId = staff.id;
+      } else {
+        // If no staff record, return empty
+        return { data: [], total: 0 };
+      }
+    }
+
+    const [incidents, total] = await this.incidentRepo.findAndCount({
+      where: whereCondition,
+      order: { id: 'ASC' },
+      skip: (page - 1) * limit,
+      take: limit,
+      relations: ['staff', 'staff.user'],
+    });
+
+    // Map to match the previous log structure for easier frontend migration
+    const data = incidents.map(inc => ({
+      id: inc.id,
+      type: inc.type,
+      action: inc.type, // Legacy support
+      description: inc.description,
+      status: inc.status,
+      createdAt: inc.createdAt,
+      actor: {
+        fullName: inc.staff.fullName,
+        email: inc.staff.user?.email,
+      }
+    }));
+
+    return { data, total };
+  }
+
+  /**
+   * Create an incident entry.
+   */
+  async createIncident(
+    userId: string, // current user ID (sub)
+    tenantId: string,
+    type: string,
+    description: string,
+  ): Promise<IncidentEntity> {
+    const staff = await this.staffRepo.findOne({ where: { userId, tenantId } });
+    if (!staff) {
+      throw new NotFoundException(`Staff record not found for user ${userId}`);
+    }
+
+    const incident = this.incidentRepo.create({
+      tenantId,
+      staffId: staff.id,
+      type,
+      description,
+      status: 'OPEN',
+    });
+
+    return this.incidentRepo.save(incident);
   }
 
   /**

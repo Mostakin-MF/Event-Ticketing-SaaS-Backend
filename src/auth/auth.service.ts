@@ -19,7 +19,7 @@ export class AuthService {
   constructor(
     private readonly adminService: AdminService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) { }
 
   async signIn(
     email: string,
@@ -67,7 +67,7 @@ export class AuthService {
 
     // Restriction: Ensure user has SOME valid role (Platform or Tenant)
     if (!role) {
-       throw new UnauthorizedException('Access denied. No active role found.');
+      throw new UnauthorizedException('Access denied. No active role found.');
     }
 
     // Create JWT payload
