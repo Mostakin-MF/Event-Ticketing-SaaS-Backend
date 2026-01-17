@@ -6,6 +6,7 @@ import { ThemeEntity } from './theme.entity';
 import { TenantEntity } from './tenant.entity';
 import { PaymentEntity } from './payment.entity';
 import { PurchaseThemeDto } from './dto/purchase-theme.dto';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class ThemePurchaseService {
@@ -24,10 +25,18 @@ export class ThemePurchaseService {
    * Purchase a premium theme
    */
   async purchaseTheme(tenantId: string, purchaseDto: PurchaseThemeDto): Promise<ThemePurchaseEntity> {
+    if (!tenantId) {
+      throw new BadRequestException('Tenant ID is required');
+    }
+
+    if (!purchaseDto.themeId) {
+      throw new BadRequestException('Theme ID is required');
+    }
+
     // 1. Verify theme exists and is premium
     const theme = await this.themeRepository.findOne({ where: { id: purchaseDto.themeId } });
     if (!theme) {
-      throw new NotFoundException('Theme not found');
+      throw new NotFoundException(`Theme with ID ${purchaseDto.themeId} not found`);
     }
 
     if (!theme.isPremium) {
@@ -54,33 +63,54 @@ export class ThemePurchaseService {
     // 3. Verify tenant exists
     const tenant = await this.tenantRepository.findOne({ where: { id: tenantId } });
     if (!tenant) {
-      throw new NotFoundException('Tenant not found');
+      throw new NotFoundException(`Tenant with ID ${tenantId} not found`);
     }
 
     // 4. Create payment record (simplified - in production, integrate with payment gateway)
-    const payment = this.paymentRepository.create({
-      orderId: `theme-${Date.now()}`, // Generate unique order ID
-      provider: purchaseDto.paymentMethod,
-      providerReference: `ref-${Date.now()}`,
-      status: 'completed', // In production, this would be 'pending' until payment gateway confirms
-      amountCents: Math.round(Number(theme.price) * 100), // Convert BDT to cents
-      currency: 'BDT',
-      payload: {
-        type: 'theme_purchase',
-        themeId: theme.id,
-        themeName: theme.name,
-        tenantId,
-      },
-    });
+    let savedPaymentId: string | undefined;
 
-    const savedPayment = await this.paymentRepository.save(payment);
+    if (purchaseDto.paymentMethod !== 'demo') {
+      const allowedProviders = ['stripe', 'bkash', 'nagad', 'rocket', 'other'];
+      const provider = allowedProviders.includes(purchaseDto.paymentMethod) 
+        ? purchaseDto.paymentMethod 
+        : 'other';
+
+      try {
+        // Safe UUID generation
+        const orderId = (crypto as any).randomUUID ? (crypto as any).randomUUID() : `order-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+        const payment = this.paymentRepository.create({
+          orderId: orderId,
+          provider: provider as any,
+          providerReference: provider === 'other' ? `${purchaseDto.paymentMethod}-${Date.now()}` : `ref-${Date.now()}`,
+          status: 'completed', 
+          amountCents: Math.round(Number(theme.price || 0) * 100),
+          currency: 'BDT',
+          payload: {
+            type: 'theme_purchase',
+            themeId: theme.id,
+            themeName: theme.name,
+            tenantId,
+            actualPaymentMethod: purchaseDto.paymentMethod,
+          },
+        });
+        const savedPayment = await this.paymentRepository.save(payment);
+        savedPaymentId = savedPayment.id;
+      } catch (paymentErr) {
+        console.error('Payment record creation failed:', paymentErr);
+        if (process.env.NODE_ENV === 'production') {
+           throw new BadRequestException('Payment processing failed. Please try a different method.');
+        }
+      }
+    }
 
     // 5. Create theme purchase record
+    const pricePaid = Number(theme.price) || 0;
     const purchase = this.themePurchaseRepository.create({
       tenantId,
-      themeId: purchaseDto.themeId,
-      pricePaid: theme.price,
-      paymentId: savedPayment.id,
+      themeId: theme.id,
+      pricePaid: pricePaid,
+      paymentId: savedPaymentId,
       status: 'active',
     });
 

@@ -1,12 +1,18 @@
-import { Body, Controller, Post, HttpCode, HttpStatus, Res, Get, UseGuards, Request } from '@nestjs/common';
+import { Body, Controller, Post, HttpCode, HttpStatus, Res, Get, UseGuards, Request, Put } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import type { JwtPayload } from './auth.service';
+import { AdminService } from '../admin/admin.service';
 import { LoginDto } from './login.dto';
 import type { Response } from 'express';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { CurrentUser } from './current-user.decorator';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly adminService: AdminService
+  ) {}
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
@@ -32,8 +38,33 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  getProfile(@Request() req) {
-    return req.user;
+  async getProfile(@CurrentUser() user: JwtPayload) {
+    const userEntity = await this.authService.getUserById(user.sub);
+    
+    let tenantName: string | null = null;
+    if (user.tenantId) {
+      try {
+        const tenant = await this.adminService.getTenantById(user.tenantId);
+        tenantName = tenant.name;
+      } catch (e) {
+        console.error('Failed to fetch tenant for profile', e);
+      }
+    }
+
+    return {
+      ...user,
+      name: userEntity.fullName,
+      email: userEntity.email,
+      tenantId: user.tenantId,
+      tenantRole: user.tenantRole,
+      tenantName: tenantName
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('profile')
+  async updateProfile(@CurrentUser() user: JwtPayload, @Body() updateData: any) {
+    return this.authService.updateProfile(user.sub, updateData);
   }
 }
 

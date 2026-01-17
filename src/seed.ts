@@ -76,7 +76,7 @@ async function bootstrap() {
       isPremium: false,
       price: 0,
       status: 'active',
-      thumbnailUrl: '/themes/modern-dark-preview.jpg',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1470229722913-7ea9959fa270?w=800&h=600&fit=crop&auto=format',
       defaultProperties: {
         colors: {
           primary: '#10b981',
@@ -97,7 +97,7 @@ async function bootstrap() {
       isPremium: false,
       price: 0,
       status: 'active',
-      thumbnailUrl: '/themes/vibrant-festival-preview.jpg',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?w=800&h=600&fit=crop&auto=format',
       defaultProperties: {
         colors: {
           primary: '#f97316',
@@ -118,7 +118,7 @@ async function bootstrap() {
       isPremium: true,
       price: 49.99,
       status: 'active',
-      thumbnailUrl: '/themes/professional-corporate-preview.jpg',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop&auto=format',
       defaultProperties: {
         colors: {
           primary: '#2563eb',

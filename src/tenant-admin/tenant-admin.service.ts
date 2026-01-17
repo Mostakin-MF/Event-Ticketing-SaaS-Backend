@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, InternalServerErrorException, HttpException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MailerService } from '@nestjs-modules/mailer';
@@ -622,79 +622,100 @@ export class TenantAdminService {
     tenantId: string,
     inviteStaffDto: InviteStaffDto,
   ): Promise<TenantUserEntity> {
-    // Check if user with email already exists
-    let user = await this.userRepository.findOne({
-      where: { email: inviteStaffDto.email },
-    });
+    try {
+      console.log('Inviting staff:', { tenantId, email: inviteStaffDto.email });
 
-    // Create user if doesn't exist
-    if (!user) {
-      const salt = await bcrypt.genSalt();
-      const hashedPassword = await bcrypt.hash(inviteStaffDto.password, salt);
-
-      user = this.userRepository.create({
-        email: inviteStaffDto.email,
-        passwordHash: hashedPassword,
-        fullName: inviteStaffDto.fullName,
-        isPlatformAdmin: false,
+      // 1. Check if user already exists
+      let user = await this.userRepository.findOne({
+        where: { email: inviteStaffDto.email },
       });
-      user = await this.userRepository.save(user);
-    }
 
-    // Check if tenant user relationship already exists
-    const existingTenantUser = await this.tenantUserRepository.findOne({
-      where: {
+      // 2. Create user if doesn't exist
+      if (!user) {
+        console.log('Creating new user for invitation...');
+        const salt = await bcrypt.genSalt();
+        const hashedPassword = await bcrypt.hash(inviteStaffDto.password, salt);
+
+        user = this.userRepository.create({
+          email: inviteStaffDto.email,
+          passwordHash: hashedPassword,
+          fullName: inviteStaffDto.fullName,
+          isPlatformAdmin: false,
+        });
+        user = await this.userRepository.save(user);
+        console.log('New user created:', user.id);
+      }
+
+      // 3. Safety check for user ID
+      if (!user || !user.id) {
+        throw new InternalServerErrorException('Failed to resolve user for invitation');
+      }
+
+      // 4. Check for existing relationship
+      const existingTenantUser = await this.tenantUserRepository.findOne({
+        where: {
+          tenantId,
+          userId: user.id,
+        },
+      });
+
+      if (existingTenantUser) {
+        throw new ConflictException('User is already a member of this organization');
+      }
+
+      // 5. Create relationship
+      console.log('Creating tenant user relationship...');
+      const tenantUser = this.tenantUserRepository.create({
         tenantId,
         userId: user.id,
-      },
-    });
+        role: 'staff',
+        status: inviteStaffDto.status ?? 'active',
+        invitedAt: new Date(),
+      });
 
-    if (existingTenantUser) {
-      throw new ConflictException(
-        'User is already a member of this tenant',
-      );
+      const savedTenantUser = await this.tenantUserRepository.save(tenantUser);
+      console.log('Invitation successful, relationship created:', savedTenantUser.id);
+
+      // 6. Send email (Async, don't block)
+      this.sendInvitationEmail(inviteStaffDto).catch(err => {
+        console.error('Failed to send invitation email (non-blocking):', err);
+      });
+
+      return savedTenantUser;
+    } catch (error: any) {
+      console.error('Staff invitation failed:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(error?.message || 'Failed to complete staff invitation');
     }
+  }
 
-    // Create tenant user relationship with 'staff' role
-    const tenantUser = this.tenantUserRepository.create({
-      tenantId,
-      userId: user.id,
-      role: 'staff',
-      status: inviteStaffDto.status ?? 'active',
-      invitedAt: new Date(),
-    });
-
-    const savedTenantUser = await this.tenantUserRepository.save(tenantUser);
-
-    // Send invitation email
+  // Helper for non-blocking email
+  private async sendInvitationEmail(dto: InviteStaffDto) {
     try {
       await this.mailerService.sendMail({
-        to: inviteStaffDto.email,
+        to: dto.email,
         subject: 'Staff Invitation - Event Ticketing System',
-        text: `Hello ${inviteStaffDto.fullName},\n\nYou have been invited to join as a staff member for the Event Ticketing System.\n\nYour login credentials:\nEmail: ${inviteStaffDto.email}\nPassword: ${inviteStaffDto.password}\n\nPlease login and change your password for security.\n\nBest regards,\nEvent Ticketing Team`,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #333;">Staff Invitation</h2>
-            <p>Hello ${inviteStaffDto.fullName},</p>
-            <p>You have been invited to join as a staff member for the Event Ticketing System.</p>
-            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-              <p style="margin: 0;"><strong>Your login credentials:</strong></p>
-              <ul style="margin: 10px 0;">
-                <li>Email: ${inviteStaffDto.email}</li>
-                <li>Password: ${inviteStaffDto.password}</li>
-              </ul>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #4f46e5;">Team Invitation</h2>
+            <p>Hello <strong>${dto.fullName}</strong>,</p>
+            <p>You have been invited to join the team as a staff member.</p>
+            <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 25px 0;">
+              <p style="margin: 0; font-weight: bold; color: #374151;">Your Credentials:</p>
+              <p style="margin: 10px 0;">Email: ${dto.email}</p>
+              <p style="margin: 0;">Temporary Password: <code style="background: #e5e7eb; padding: 2px 4px; border-radius: 4px;">${dto.password}</code></p>
             </div>
-            <p><strong>Important:</strong> Please login and change your password for security.</p>
-            <p>Best regards,<br>Event Ticketing Team</p>
+            <p style="font-size: 14px; color: #6b7280;">Please login and change your password immediately for security.</p>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
+            <p style="font-size: 12px; color: #9ca3af; text-align: center;">Event Ticketing System &copy; 2024</p>
           </div>
         `,
       });
     } catch (error) {
-      // Log error but don't fail the invitation
-      console.error('Failed to send invitation email:', error);
+      throw error;
     }
-
-    return savedTenantUser;
   }
 
   async getAllStaff(

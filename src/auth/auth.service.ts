@@ -44,25 +44,25 @@ export class AuthService {
     let tenantId: string | undefined;
     let tenantRole: 'TenantAdmin' | 'staff' | undefined;
 
-    // Check if user is platform admin
+    // Fetch active tenant roles for the user (even if they are a platform admin)
+    const tenantUsers = await this.adminService.findActiveTenantUsersByUserId(
+      user.id,
+    );
+
+    if (tenantUsers.length > 0) {
+      // Use the first active tenant role (most recent by createdAt DESC)
+      // Priority: TenantAdmin > staff
+      const tenantAdmin = tenantUsers.find((tu) => tu.role === 'TenantAdmin');
+      const activeTenantUser = tenantAdmin || tenantUsers[0];
+
+      tenantId = activeTenantUser.tenantId;
+      tenantRole = activeTenantUser.role as 'TenantAdmin' | 'staff';
+      role = activeTenantUser.role as 'TenantAdmin' | 'staff';
+    }
+
+    // Platform admin status overrides the role for permissions, but we keep tenant context
     if (user.isPlatformAdmin) {
       role = 'platform_admin';
-    } else {
-      // Fetch active tenant roles for the user
-      const tenantUsers = await this.adminService.findActiveTenantUsersByUserId(
-        user.id,
-      );
-
-      if (tenantUsers.length > 0) {
-        // Use the first active tenant role (most recent by createdAt DESC)
-        // Priority: TenantAdmin > staff
-        const tenantAdmin = tenantUsers.find((tu) => tu.role === 'TenantAdmin');
-        const activeTenantUser = tenantAdmin || tenantUsers[0];
-
-        role = activeTenantUser.role as 'TenantAdmin' | 'staff';
-        tenantId = activeTenantUser.tenantId;
-        tenantRole = activeTenantUser.role as 'TenantAdmin' | 'staff';
-      }
     }
 
     // Restriction: Ensure user has SOME valid role (Platform or Tenant)
@@ -92,5 +92,13 @@ export class AuthService {
         isPlatformAdmin: user.isPlatformAdmin
       }
     };
+  }
+
+  async updateProfile(userId: string, data: any) {
+    return this.adminService.updateUser(userId, data);
+  }
+
+  async getUserById(userId: string) {
+    return this.adminService.getUserById(userId);
   }
 }

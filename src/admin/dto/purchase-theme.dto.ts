@@ -1,9 +1,9 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class PurchaseThemeDto {
   @IsString()
-  @IsNotEmpty()
-  themeId: string;
+  @IsOptional()
+  themeId?: string;
 
   @IsString()
   @IsNotEmpty()
