@@ -114,13 +114,5 @@ export class EventsController {
     return this.eventsService.publishEvent(id, isPublished);
   }
 
-  // Public Event Endpoint
-  @Public()
-  @Get('public/:tenantSlug/:eventSlug')
-  async getPublicEventBySlug(
-    @Param('tenantSlug') tenantSlug: string,
-    @Param('eventSlug') eventSlug: string,
-  ) {
-    return this.eventsService.getEventBySlug(tenantSlug, eventSlug);
-  }
+
 }

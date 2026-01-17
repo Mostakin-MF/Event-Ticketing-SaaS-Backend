@@ -51,7 +51,7 @@ export class EventEntity {
   @Column({ nullable: true })
   imageUrl: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0, comment: 'Price in BDT (Taka)' })
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0, nullable: true, comment: 'Price in BDT (Taka)' })
   price: number;
 
   @Column({ default: 'draft' }) // draft, published, cancelled

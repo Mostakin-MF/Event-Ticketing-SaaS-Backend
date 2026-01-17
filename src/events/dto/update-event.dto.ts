@@ -41,8 +41,6 @@ export class UpdateEventDto {
   @IsOptional()
   imageUrl?: string;
 
-  @IsNumber()
-  @Min(0)
   @IsOptional()
   price?: number;
 

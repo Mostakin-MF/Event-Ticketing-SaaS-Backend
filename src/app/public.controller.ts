@@ -34,6 +34,12 @@ export class PublicController {
   }
 
   @Public()
+  @Get('events/:slug')
+  async getGlobalEvent(@Param('slug') slug: string) {
+    return this.eventsService.getEventByGlobalSlug(slug);
+  }
+
+  @Public()
   @Get(':tenantSlug/:eventSlug')
   async getPublicEvent(
     @Param('tenantSlug') tenantSlug: string,

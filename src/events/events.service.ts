@@ -56,7 +56,7 @@ export class EventsService {
   async getEventById(id: string) {
     const event = await this.eventRepository.findOne({
       where: { id },
-      relations: ['theme'],
+      relations: ['theme', 'tenant'],
     });
     if (!event) {
       throw new NotFoundException(`Event with ID ${id} not found`);
@@ -76,6 +76,18 @@ export class EventsService {
 
     if (!event) {
       throw new NotFoundException(`Event not found or not published`);
+    }
+    return event;
+  }
+
+  async getEventByGlobalSlug(slug: string) {
+    const event = await this.eventRepository.findOne({
+      where: { slug },
+      relations: ['theme', 'tenant'],
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Event not found`);
     }
     return event;
   }

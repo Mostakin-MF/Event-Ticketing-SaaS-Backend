@@ -37,8 +37,6 @@ export class CreateEventDto {
   @IsOptional()
   imageUrl?: string;
 
-  @IsNumber()
-  @Min(0)
   @IsOptional()
   price?: number;
 
