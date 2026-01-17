@@ -3,6 +3,8 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './login.dto';
 import type { Response } from 'express';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { Public } from './public.decorator';
+import { RegisterAttendeeDto } from './register-attendee.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -28,6 +30,12 @@ export class AuthController {
   async logout(@Res({ passthrough: true }) response: Response) {
     response.clearCookie('jwt');
     return { message: 'Logged out successfully' };
+  }
+
+  @Public()
+  @Post('register')
+  async register(@Body() registerDto: RegisterAttendeeDto) {
+    return this.authService.register(registerDto);
   }
 
   @UseGuards(JwtAuthGuard)

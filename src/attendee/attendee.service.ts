@@ -15,6 +15,8 @@ import {
   OrderItem,
   Ticket,
 } from '../tenant-admin/tenant-entity';
+import { AttendeeEntity } from './attendee.entity';
+import { UserEntity } from '../admin/user.entity';
 import {
   CheckoutDto,
   OrderResponseDto,
@@ -48,8 +50,12 @@ export class AttendeeService {
     private orderItemRepository: Repository<OrderItem>,
     @InjectRepository(Ticket)
     private ticketRepository: Repository<Ticket>,
+    @InjectRepository(AttendeeEntity)
+    private attendeeRepository: Repository<AttendeeEntity>,
+    @InjectRepository(UserEntity)
+    private userRepository: Repository<UserEntity>,
     private dataSource: DataSource,
-  ) {}
+  ) { }
 
   /**
    * Get all public events (status = 'active' and is_public = true)
@@ -468,29 +474,29 @@ export class AttendeeService {
       hero_image_url: event.hero_image_url || null,
       ticket_types: event.ticketTypes
         ? event.ticketTypes
-            .filter((tt) => tt.status === 'active')
-            .map((tt) => ({
-              id: tt.id,
-              name: tt.name,
-              description: tt.description,
-              price_taka: tt.price_taka,
-              currency: tt.currency,
-              quantity_total: tt.quantity_total,
-              quantity_sold: tt.quantity_sold,
-              quantity_available: tt.quantity_total - tt.quantity_sold,
-              sales_start: tt.sales_start,
-              sales_end: tt.sales_end,
-              status: tt.status,
-            }))
+          .filter((tt) => tt.status === 'active')
+          .map((tt) => ({
+            id: tt.id,
+            name: tt.name,
+            description: tt.description,
+            price_taka: tt.price_taka,
+            currency: tt.currency,
+            quantity_total: tt.quantity_total,
+            quantity_sold: tt.quantity_sold,
+            quantity_available: tt.quantity_total - tt.quantity_sold,
+            sales_start: tt.sales_start,
+            sales_end: tt.sales_end,
+            status: tt.status,
+          }))
         : [],
       sessions: event.sessions
         ? event.sessions.map((session) => ({
-            id: session.id,
-            title: session.title,
-            description: session.description,
-            start_at: session.start_at,
-            end_at: session.end_at,
-          }))
+          id: session.id,
+          title: session.title,
+          description: session.description,
+          start_at: session.start_at,
+          end_at: session.end_at,
+        }))
         : [],
     };
   }
@@ -512,28 +518,196 @@ export class AttendeeService {
       created_at: order.created_at,
       items: order.orderItems
         ? order.orderItems.map((item) => ({
-            id: item.id,
-            ticket_type_id: item.ticket_type_id,
-            ticket_type_name: item.ticketType?.name || '',
-            unit_price_taka: item.unit_price_taka,
-            quantity: item.quantity,
-            subtotal_taka: item.subtotal_taka,
-          }))
+          id: item.id,
+          ticket_type_id: item.ticket_type_id,
+          ticket_type_name: item.ticketType?.name || '',
+          unit_price_taka: item.unit_price_taka,
+          quantity: item.quantity,
+          subtotal_taka: item.subtotal_taka,
+        }))
         : [],
       tickets: order.tickets
         ? order.tickets.map((ticket) => ({
-            id: ticket.id,
-            order_id: ticket.order_id,
-            ticket_type_id: ticket.ticket_type_id,
-            ticket_type_name: ticket.ticketType?.name || '',
-            attendee_name: ticket.attendee_name,
-            attendee_email: ticket.attendee_email,
-            qr_code_payload: ticket.qr_code_payload,
-            status: ticket.status,
-            checked_in_at: ticket.checked_in_at,
-            seat_label: ticket.seat_label,
-          }))
+          id: ticket.id,
+          order_id: ticket.order_id,
+          ticket_type_id: ticket.ticket_type_id,
+          ticket_type_name: ticket.ticketType?.name || '',
+          attendee_name: ticket.attendee_name,
+          attendee_email: ticket.attendee_email,
+          qr_code_payload: ticket.qr_code_payload,
+          status: ticket.status,
+          checked_in_at: ticket.checked_in_at,
+          seat_label: ticket.seat_label,
+        }))
         : [],
     };
+  }
+  /**
+   * Get attendee profile (User + Attendee details)
+   */
+  async getAttendeeProfile(userId: string) {
+    const attendee = await this.attendeeRepository.findOne({
+      where: { userId },
+      relations: ['user'],
+    });
+
+    if (!attendee) {
+      // Fallback if only user exists but no attendee record yet (though register flow should prevent this)
+      // Or maybe it's a staff logging in as attendee?
+      const user = await this.userRepository.findOneBy({ id: userId });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+      return {
+        email: user.email,
+        fullName: user.fullName,
+        role: 'attendee',
+        phoneNumber: null,
+        dateOfBirth: null,
+        gender: null,
+        country: null,
+        city: null,
+      };
+    }
+
+    return {
+      email: attendee.user.email,
+      fullName: attendee.user.fullName,
+      role: 'attendee', // Explicitly identifying as attendee
+      phoneNumber: attendee.phoneNumber,
+      dateOfBirth: attendee.dateOfBirth,
+      gender: attendee.gender,
+      country: attendee.country,
+      city: attendee.city,
+    };
+  }
+
+  /**
+   * Update attendee profile
+   */
+  async updateAttendeeProfile(userId: string, dto: any) {
+    return this.dataSource.transaction(async (manager) => {
+      // 1. Update User (fullName)
+      if (dto.fullName) {
+        await manager.update(UserEntity, userId, { fullName: dto.fullName });
+      }
+
+      // 2. Update Attendee Profile
+      // Check if attendee record exists
+      let attendee = await manager.findOne(AttendeeEntity, { where: { userId } });
+
+      if (!attendee) {
+        // Create if missing
+        attendee = manager.create(AttendeeEntity, {
+          userId,
+          ...dto
+        });
+        await manager.save(AttendeeEntity, attendee);
+      } else {
+        // Update existing
+        // We only update fields that are present in dto
+        const updateData: any = {};
+        if (dto.phoneNumber !== undefined) updateData.phoneNumber = dto.phoneNumber;
+        if (dto.dateOfBirth !== undefined) updateData.dateOfBirth = dto.dateOfBirth;
+        if (dto.gender !== undefined) updateData.gender = dto.gender;
+        if (dto.country !== undefined) updateData.country = dto.country;
+        if (dto.city !== undefined) updateData.city = dto.city;
+
+        await manager.update(AttendeeEntity, { id: attendee.id }, updateData);
+      }
+
+      return this.getAttendeeProfile(userId);
+    });
+  }
+
+  /**
+   * Cancel a ticket (authenticated user)
+   */
+  async cancelTicket(ticketId: string, userId: string): Promise<{ message: string; ticket: TicketResponseDto }> {
+    return this.dataSource.transaction(async (manager) => {
+      // 1. Find the ticket with order information
+      const ticket = await manager.findOne(Ticket, {
+        where: { id: ticketId },
+        relations: ['order', 'ticketType', 'order.event'],
+      });
+
+      if (!ticket) {
+        throw new NotFoundException(`Ticket with ID '${ticketId}' not found`);
+      }
+
+      // 2. Verify ownership - check if the user has an attendee profile matching the order email
+      const attendee = await manager.findOne(AttendeeEntity, {
+        where: { userId },
+        relations: ['user'],
+      });
+
+      if (!attendee || attendee.user.email !== ticket.order.buyer_email) {
+        throw new BadRequestException('You do not have permission to cancel this ticket');
+      }
+
+      // 3. Check if ticket is already cancelled or used
+      if (ticket.status === 'cancelled') {
+        throw new BadRequestException('This ticket is already cancelled');
+      }
+
+      if (ticket.status === 'used' || ticket.checked_in_at) {
+        throw new BadRequestException('This ticket has already been checked in and cannot be cancelled');
+      }
+
+      // 4. Check cancellation policy (e.g., must be at least 24 hours before event)
+      const event = ticket.order.event;
+      const now = new Date();
+      const eventStartTime = new Date(event.start_at);
+      const hoursUntilEvent = (eventStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      if (hoursUntilEvent < 24) {
+        throw new BadRequestException('Tickets cannot be cancelled less than 24 hours before the event');
+      }
+
+      // 5. Update ticket status
+      await manager.update(Ticket, { id: ticketId }, { status: 'cancelled' });
+
+      // 6. Restore ticket inventory
+      await manager.decrement(
+        TicketType,
+        { id: ticket.ticket_type_id },
+        'quantity_sold',
+        1
+      );
+
+      // 7. Check if all tickets in the order are cancelled
+      const allTickets = await manager.find(Ticket, {
+        where: { order_id: ticket.order_id },
+      });
+
+      const allCancelled = allTickets.every(t => t.id === ticketId || t.status === 'cancelled');
+
+      if (allCancelled) {
+        // Update order status to cancelled
+        await manager.update(Order, { id: ticket.order_id }, { status: 'cancelled' });
+      }
+
+      // 8. Return updated ticket
+      const updatedTicket = await manager.findOne(Ticket, {
+        where: { id: ticketId },
+        relations: ['ticketType'],
+      });
+
+      return {
+        message: 'Ticket cancelled successfully. Refund will be processed within 5-7 business days.',
+        ticket: {
+          id: updatedTicket!.id,
+          order_id: updatedTicket!.order_id,
+          ticket_type_id: updatedTicket!.ticket_type_id,
+          ticket_type_name: updatedTicket!.ticketType.name,
+          attendee_name: updatedTicket!.attendee_name,
+          attendee_email: updatedTicket!.attendee_email,
+          qr_code_payload: updatedTicket!.qr_code_payload,
+          status: 'cancelled',
+          checked_in_at: updatedTicket!.checked_in_at,
+          seat_label: updatedTicket!.seat_label,
+        }
+      };
+    });
   }
 }

@@ -11,6 +11,8 @@ import {
   OrderItem,
   Ticket,
 } from '../tenant-admin/tenant-entity';
+import { AttendeeEntity } from './attendee.entity';
+import { UserEntity } from '../admin/user.entity';
 
 @Module({
   imports: [
@@ -22,10 +24,12 @@ import {
       Order,
       OrderItem,
       Ticket,
+      AttendeeEntity,
+      UserEntity
     ]),
   ],
   controllers: [AttendeeController],
   providers: [AttendeeService],
   exports: [AttendeeService],
 })
-export class AttendeeModule {}
+export class AttendeeModule { }

@@ -10,6 +10,7 @@ import {
   IsOptional,
   IsEnum,
   IsBoolean,
+  IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -160,4 +161,30 @@ export class OrderLookupDto {
   @IsOptional()
   @IsUUID()
   order_id?: string;
+}
+
+export class UpdateAttendeeProfileDto {
+  @IsOptional()
+  @IsString()
+  fullName?: string;
+
+  @IsOptional()
+  @IsString()
+  phoneNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  dateOfBirth?: string;
+
+  @IsOptional()
+  @IsString()
+  gender?: string;
+
+  @IsOptional()
+  @IsString()
+  country?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
 }

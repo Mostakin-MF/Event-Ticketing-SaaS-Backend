@@ -58,6 +58,8 @@ export class UpdateUserDto {
   @IsOptional()
   @IsBoolean()
   isPlatformAdmin?: boolean;
+
+
 }
 
 // Tenant DTOs
@@ -500,7 +502,7 @@ export class UpdateThemeDto {
   @IsOptional()
   @IsString()
   description?: string;
-  
+
   @IsOptional()
   @IsString()
   thumbnailUrl?: string;

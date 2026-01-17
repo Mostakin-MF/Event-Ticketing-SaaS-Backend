@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, FindOptionsWhere } from 'typeorm';
+import { Repository, Like, FindOptionsWhere, EntityManager } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import {
   CreateUserDto,
@@ -57,7 +57,7 @@ export class AdminService {
     private themeRepository: Repository<ThemeEntity>,
     @InjectRepository(TenantConfigEntity)
     private tenantConfigRepository: Repository<TenantConfigEntity>,
-  ) {}
+  ) { }
 
   async seedThemes() {
     const themes = [
@@ -69,7 +69,7 @@ export class AdminService {
         price: 0,
         type: 'dark',
         defaultProperties: {
-          colors: { 
+          colors: {
             primary: '#10b981', // Emerald 500
             secondary: '#f59e0b', // Amber 500
             background: '#020617', // Slate 950
@@ -87,7 +87,7 @@ export class AdminService {
         price: 0,
         type: 'light',
         defaultProperties: {
-          colors: { 
+          colors: {
             primary: '#f97316', // Orange 500
             secondary: '#8b5cf6', // Violet 500
             background: '#fff7ed', // Orange 50
@@ -105,7 +105,7 @@ export class AdminService {
         price: 49.00,
         type: 'light',
         defaultProperties: {
-          colors: { 
+          colors: {
             primary: '#2563eb', // Blue 600
             secondary: '#64748b', // Slate 500
             background: '#f8fafc', // Slate 50
@@ -132,43 +132,45 @@ export class AdminService {
   }
 
   // User operations (Platform Users)
-  async createUser(createUserDto: CreateUserDto): Promise<UserEntity> {
+  async createUser(createUserDto: CreateUserDto, manager?: EntityManager): Promise<UserEntity> {
     // Generate salt and hash password
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(createUserDto.password, salt);
 
-    const user = this.userRepository.create({
+    const repo = manager ? manager.getRepository(UserEntity) : this.userRepository;
+
+    const user = repo.create({
       email: createUserDto.email,
       passwordHash: hashedPassword,
       fullName: createUserDto.fullName,
       isPlatformAdmin: createUserDto.isPlatformAdmin ?? false,
     });
 
-    
+
     try {
-        return await this.userRepository.save(user);
+      return await repo.save(user);
     } catch (error: any) {
-        if (error.code === '23505') { // Postgres unique violation code
-            throw new ConflictException('User with this email already exists');
-        }
-        throw error;
+      if (error.code === '23505') { // Postgres unique violation code
+        throw new ConflictException('User with this email already exists');
+      }
+      throw error;
     }
   }
 
   async registerAdmin(createAdminDto: any): Promise<UserEntity> {
-      // Check if email already exists
-      const existingUser = await this.findUserByEmail(createAdminDto.email);
-      if (existingUser) {
-          throw new UnauthorizedException('Email already in use');
-      }
+    // Check if email already exists
+    const existingUser = await this.findUserByEmail(createAdminDto.email);
+    if (existingUser) {
+      throw new UnauthorizedException('Email already in use');
+    }
 
-      // Create Admin User
-      return this.createUser({
-          email: createAdminDto.email,
-          password: createAdminDto.password,
-          fullName: createAdminDto.fullName,
-          isPlatformAdmin: true,
-      });
+    // Create Admin User
+    return this.createUser({
+      email: createAdminDto.email,
+      password: createAdminDto.password,
+      fullName: createAdminDto.fullName,
+      isPlatformAdmin: true,
+    });
   }
 
   async getAllUsers(query: UserQueryDto) {
@@ -179,18 +181,18 @@ export class AdminService {
 
     const whereCondition: any = {};
     if (query.isPlatformAdmin !== undefined) {
-        // Handle potential string 'true'/'false' from query params
-        const isAdmin = String(query.isPlatformAdmin) === 'true';
-        whereCondition.isPlatformAdmin = isAdmin;
-        console.log(`Filtering by isPlatformAdmin: ${isAdmin}`); // Debug log
+      // Handle potential string 'true'/'false' from query params
+      const isAdmin = String(query.isPlatformAdmin) === 'true';
+      whereCondition.isPlatformAdmin = isAdmin;
+      console.log(`Filtering by isPlatformAdmin: ${isAdmin}`); // Debug log
     }
-    
+
     let finalWhere: any = whereCondition;
     if (search) {
-        finalWhere = [
-            { ...whereCondition, email: Like(`%${search}%`) },
-            { ...whereCondition, fullName: Like(`%${search}%`) }
-        ];
+      finalWhere = [
+        { ...whereCondition, email: Like(`%${search}%`) },
+        { ...whereCondition, fullName: Like(`%${search}%`) }
+      ];
     }
 
     const [data, total] = await this.userRepository.findAndCount({
@@ -258,6 +260,10 @@ export class AdminService {
     if (updateUserDto.isPlatformAdmin !== undefined) {
       updateData.isPlatformAdmin = updateUserDto.isPlatformAdmin;
     }
+
+    // Attendee profile fields should be handled via AttendeeService or AuthService directly updating AttendeeEntity
+    // They are no longer part of UserEntity
+
     await this.userRepository.update(id, updateData);
     const user = await this.userRepository.findOneBy({ id });
     if (!user) {
@@ -384,33 +390,33 @@ export class AdminService {
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.tenantUserRepository.createQueryBuilder('tenantUser')
-        .leftJoinAndSelect('tenantUser.tenant', 'tenant')
-        .leftJoinAndSelect('tenantUser.user', 'user');
+      .leftJoinAndSelect('tenantUser.tenant', 'tenant')
+      .leftJoinAndSelect('tenantUser.user', 'user');
 
     if (tenantId) {
-        queryBuilder.andWhere('tenantUser.tenantId = :tenantId', { tenantId });
+      queryBuilder.andWhere('tenantUser.tenantId = :tenantId', { tenantId });
     }
     if (userId) {
-        queryBuilder.andWhere('tenantUser.userId = :userId', { userId });
+      queryBuilder.andWhere('tenantUser.userId = :userId', { userId });
     }
     if (role) {
-        queryBuilder.andWhere('tenantUser.role = :role', { role });
+      queryBuilder.andWhere('tenantUser.role = :role', { role });
     }
     if (status) {
-        queryBuilder.andWhere('tenantUser.status = :status', { status });
+      queryBuilder.andWhere('tenantUser.status = :status', { status });
     }
 
     if (search) {
-        queryBuilder.andWhere(
-            '(user.email LIKE :search OR user.fullName LIKE :search OR tenant.name LIKE :search)',
-            { search: `%${search}%` }
-        );
+      queryBuilder.andWhere(
+        '(user.email LIKE :search OR user.fullName LIKE :search OR tenant.name LIKE :search)',
+        { search: `%${search}%` }
+      );
     }
 
     queryBuilder
-        .skip(skip)
-        .take(limit)
-        .orderBy('tenantUser.createdAt', 'DESC');
+      .skip(skip)
+      .take(limit)
+      .orderBy('tenantUser.createdAt', 'DESC');
 
     const [data, total] = await queryBuilder.getManyAndCount();
 
@@ -776,7 +782,7 @@ export class AdminService {
       where: { status: 'active' },
     });
     const totalUsers = await this.userRepository.count();
-    
+
     // Calculate total revenue from processed payments
     const { sum } = await this.paymentRepository
       .createQueryBuilder('payment')
@@ -789,15 +795,15 @@ export class AdminService {
     // Calculate System Health based on payment success rate
     const totalPayments = await this.paymentRepository.count();
     const failedPayments = await this.paymentRepository.count({
-        where: { status: 'failed' }
+      where: { status: 'failed' }
     });
-    
+
     let healthStatus = 'Operational';
     if (totalPayments > 0) {
-        const failureRate = failedPayments / totalPayments;
-        if (failureRate > 0.1) { // More than 10% failure
-            healthStatus = 'Degraded';
-        }
+      const failureRate = failedPayments / totalPayments;
+      if (failureRate > 0.1) { // More than 10% failure
+        healthStatus = 'Degraded';
+      }
     }
 
     return {
@@ -895,9 +901,9 @@ export class AdminService {
 
   async updateTenantConfig(tenantId: string, updateDto: UpdateTenantConfigDto): Promise<TenantConfigEntity> {
     let config = await this.tenantConfigRepository.findOne({ where: { tenantId } });
-    
+
     if (!config) {
-        config = this.tenantConfigRepository.create({ tenantId });
+      config = this.tenantConfigRepository.create({ tenantId });
     }
 
     Object.assign(config, updateDto);
