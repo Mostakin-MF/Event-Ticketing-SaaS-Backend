@@ -10,6 +10,7 @@ import { AttendeeModule } from './attendee/attendee.module';
 import { PublicController } from './app/public.controller';
 import { EventsModule } from './events/events.module';
 import { TicketsModule } from './tickets/tickets.module';
+import { PusherModule } from './pusher/pusher.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { TicketsModule } from './tickets/tickets.module';
         from: `"Event Ticketing System" <${process.env.SMTP_USER || 'noreply@example.com'}>`,
       },
     }),
+    PusherModule,
     TenantAdminModule,
     AdminModule,
     AuthModule,
