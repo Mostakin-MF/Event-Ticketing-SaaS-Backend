@@ -8,14 +8,14 @@ import {
 } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { MailerService } from '@nestjs-modules/mailer';
 import * as bcrypt from 'bcrypt';
 
 import { StaffEntity } from './staff.entity';
 import { IncidentEntity } from './incident.entity';
 import { ActivityLogEntity } from '../admin/activity-log.entity';
-import { CreateStaffDto, UpdateStaffDto, CheckinDto } from './staff.dto';
+import { CreateStaffDto, UpdateStaffDto, CheckinDto, ReportIncidentDto, ResolveIncidentDto } from './staff.dto';
 
 import {
   Event,
@@ -241,16 +241,29 @@ export class StaffService {
    * Called from: PUT /staff/me
    */
   async updateStaffProfile(
-    staffId: string,
+    userId: string,
     dto: UpdateStaffDto,
   ): Promise<StaffEntity> {
+    // First verify user has active TenantUserEntity with role='staff'
+    const tenantUser = await this.tenantUserRepo.findOne({
+      where: { userId, role: 'staff', status: 'active' },
+      relations: ['user', 'tenant'],
+    });
+
+    if (!tenantUser) {
+      throw new NotFoundException(
+        `Staff record not found or inactive for user ${userId}`,
+      );
+    }
+
+    // Find StaffEntity linked to this user and tenant
     const staff = await this.staffRepo.findOne({
-      where: { id: staffId },
+      where: { userId, tenantId: tenantUser.tenantId },
       relations: ['user'],
     });
 
     if (!staff) {
-      throw new NotFoundException(`Staff with id ${staffId} not found`);
+      throw new NotFoundException(`Staff record not found for user ${userId}`);
     }
 
     // Handle password update - update in UserEntity
@@ -965,18 +978,153 @@ export class StaffService {
   }
 
   /**
-   * Get order details by ID.
+   * Resolve an incident.
+   */
+  async resolveIncident(
+    userId: string, // current user ID (sub)
+    tenantId: string,
+    incidentId: string,
+    resolutionNotes: string,
+    resolutionType: string,
+  ): Promise<IncidentEntity> {
+    // Get current staff member
+    const staff = await this.staffRepo.findOne({ where: { userId, tenantId } });
+    if (!staff) {
+      throw new NotFoundException(`Staff record not found for user ${userId}`);
+    }
+
+    // Find incident
+    const incident = await this.incidentRepo.findOne({
+      where: { id: incidentId, tenantId },
+      relations: ['staff', 'resolvedByStaff'],
+    });
+
+    if (!incident) {
+      throw new NotFoundException(
+        `Incident with id ${incidentId} not found for this tenant`,
+      );
+    }
+
+    // Check permissions: SUPERVISOR can resolve any, others can only resolve their own
+    if (staff.position !== 'SUPERVISOR' && incident.staffId !== staff.id) {
+      throw new ForbiddenException(
+        'You can only resolve your own incidents. Contact a supervisor for assistance.',
+      );
+    }
+
+    // Update incident
+    incident.status = 'RESOLVED';
+    incident.resolutionNotes = resolutionNotes;
+    incident.resolutionType = resolutionType;
+    incident.resolvedAt = new Date();
+    incident.resolvedByStaffId = staff.id;
+
+    return this.incidentRepo.save(incident);
+  }
+
+  /**
+   * =====================================================
+   * DASHBOARD STATS METHODS
+   * =====================================================
+   */
+
+  /**
+   * Get dashboard stats for a staff member.
+   */
+  async getDashboardStats(userId: string, tenantId: string): Promise<any> {
+    // Get staff info with position
+    const staff = await this.staffRepo.findOne({ where: { userId, tenantId } });
+    if (!staff) {
+      throw new NotFoundException(`Staff record not found for user ${userId}`);
+    }
+
+    // Count checked-in tickets today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const ticketsCheckedToday = await this.ticketRepo
+      .createQueryBuilder('ticket')
+      .innerJoinAndSelect('ticket.order', 'order')
+      .where('order.tenant_id = :tenantId', { tenantId })
+      .andWhere('ticket.checked_in_at >= :today', { today })
+      .andWhere('ticket.checked_in_at < :tomorrow', { tomorrow })
+      .getCount();
+
+    // Count open incidents for staff
+    const openIncidents =
+      staff.position === 'SUPERVISOR'
+        ? await this.incidentRepo.count({
+            where: { tenantId, status: 'OPEN' },
+          })
+        : await this.incidentRepo.count({
+            where: { tenantId, staffId: staff.id, status: 'OPEN' },
+          });
+
+    // Count resolved incidents this week
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    const resolvedThisWeek =
+      staff.position === 'SUPERVISOR'
+        ? await this.incidentRepo.count({
+            where: {
+              tenantId,
+              status: 'RESOLVED',
+              resolvedAt: Between(weekAgo, new Date()),
+            },
+          })
+        : await this.incidentRepo.count({
+            where: {
+              tenantId,
+              staffId: staff.id,
+              status: 'RESOLVED',
+              resolvedAt: Between(weekAgo, new Date()),
+            },
+          });
+
+    // Get assigned events
+    const assignedEvents = await this.eventRepo.count({
+      where: { tenant_id: tenantId },
+    });
+
+    return {
+      role: staff.position,
+      fullName: staff.fullName,
+      ticketsCheckedToday,
+      openIncidents,
+      resolvedThisWeek,
+      assignedEvents,
+      lastLogin: staff.lastLoginAt,
+    };
+  }
+
+  /**
+   * Get order details by ID
    * Called from: GET /staff/orders/:id
    */
-  async getOrderById(tenantId: string, orderId: string): Promise<Order> {
+  async getOrderById(
+    tenantId: string,
+    orderId: string,
+  ): Promise<Order> {
     const order = await this.orderRepo.findOne({
-      where: { id: orderId, tenant_id: tenantId },
-      relations: ['event', 'tickets', 'tickets.ticketType'],
+      where: { 
+        id: orderId,
+        tenant_id: tenantId,
+      },
+      relations: [
+        'event',
+        'orderItems',
+        'orderItems.ticketType',
+        'tickets',
+        'payments',
+      ],
     });
 
     if (!order) {
       throw new NotFoundException(
-        `Order with id ${orderId} not found for this tenant`,
+        `Order with ID ${orderId} not found for this tenant`,
       );
     }
 

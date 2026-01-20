@@ -29,6 +29,7 @@ import {
   DiscountCodeValidationResponseDto,
   OrderLookupDto,
 } from './attendee.dto';
+import { AttendeeNotificationService } from './attendee-notification.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -55,14 +56,18 @@ export class AttendeeService {
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
     private dataSource: DataSource,
+    private attendeeNotificationService: AttendeeNotificationService,
   ) { }
 
   /**
-   * Get all public events (status = 'active' and is_public = true)
+   * Get all public events (status = 'published' and is_public = true)
    */
   async getAllPublicEvents(): Promise<PublicEventResponseDto[]> {
     const events = await this.eventRepository.find({
-      where: { status: 'active', is_public: true },
+      where: [
+        { status: 'published', is_public: true },
+        { status: 'active', is_public: true } // Fallback for any old data
+      ],
       relations: ['ticketTypes', 'sessions'],
       order: { start_at: 'ASC' },
     });
@@ -75,7 +80,10 @@ export class AttendeeService {
    */
   async getEventBySlug(slug: string): Promise<PublicEventResponseDto> {
     const event = await this.eventRepository.findOne({
-      where: { slug, status: 'active', is_public: true },
+      where: [
+        { slug, status: 'published', is_public: true },
+        { slug, status: 'active', is_public: true }
+      ],
       relations: ['ticketTypes', 'sessions'],
     });
 
@@ -91,7 +99,10 @@ export class AttendeeService {
    */
   async getEventById(eventId: string): Promise<PublicEventResponseDto> {
     const event = await this.eventRepository.findOne({
-      where: { id: eventId, status: 'active', is_public: true },
+      where: [
+        { id: eventId, status: 'published', is_public: true },
+        { id: eventId, status: 'active', is_public: true }
+      ],
       relations: ['ticketTypes', 'sessions'],
     });
 
@@ -188,9 +199,12 @@ export class AttendeeService {
    * Create order and tickets (checkout flow)
    */
   async checkout(checkoutDto: CheckoutDto): Promise<OrderResponseDto> {
-    // 1. Validate event exists and is active and public
+    // 1. Validate event exists and is published/active and public
     const event = await this.eventRepository.findOne({
-      where: { id: checkoutDto.event_id, status: 'active', is_public: true },
+      where: [
+        { id: checkoutDto.event_id, status: 'published', is_public: true },
+        { id: checkoutDto.event_id, status: 'active', is_public: true }
+      ],
     });
 
     if (!event) {
@@ -354,7 +368,29 @@ export class AttendeeService {
 
       await queryRunner.commitTransaction();
 
-      // 6. Return order with relations
+      // 6. Send ticket purchased notification
+      try {
+        const attendee = await this.attendeeRepository.findOne({
+          where: { user: { email: checkoutDto.buyer_email } },
+          relations: ['user'],
+        });
+
+        if (attendee) {
+          await this.attendeeNotificationService.notifyTicketPurchased(
+            attendee.userId,
+            {
+              eventName: event.name,
+              eventDate: event.start_at.toISOString(),
+              ticketCount: savedTickets.length,
+              orderId: savedOrder.id,
+            }
+          );
+        }
+      } catch (notifError) {
+        console.error('Failed to send ticket purchased notification:', notifError);
+      }
+
+      // 7. Return order with relations
       const fullOrder = await this.orderRepository.findOne({
         where: { id: savedOrder.id },
         relations: ['orderItems', 'orderItems.ticketType', 'tickets', 'tickets.ticketType', 'event'],
@@ -624,6 +660,7 @@ export class AttendeeService {
    * Cancel a ticket (authenticated user)
    */
   async cancelTicket(ticketId: string, userId: string): Promise<{ message: string; ticket: TicketResponseDto }> {
+
     return this.dataSource.transaction(async (manager) => {
       // 1. Find the ticket with order information
       const ticket = await manager.findOne(Ticket, {
@@ -631,43 +668,74 @@ export class AttendeeService {
         relations: ['order', 'ticketType', 'order.event'],
       });
 
+      if (ticket) {
+        console.log('Ticket details:', {
+          id: ticket.id,
+          order_id: ticket.order_id,
+          status: ticket.status,
+          attendee_email: ticket.attendee_email,
+        });
+        console.log('Order buyer_email:', ticket.order?.buyer_email);
+      }
+
       if (!ticket) {
+        console.log('ERROR: Ticket not found in database');
         throw new NotFoundException(`Ticket with ID '${ticketId}' not found`);
       }
 
       // 2. Verify ownership - check if the user has an attendee profile matching the order email
+      console.log('Step 2: Verifying ownership...');
+      console.log('Looking for attendee with userId:', userId);
       const attendee = await manager.findOne(AttendeeEntity, {
         where: { userId },
         relations: ['user'],
       });
 
+      console.log('Attendee found:', attendee ? 'YES' : 'NO');
+      if (attendee) {
+        console.log('Attendee details:', {
+          id: attendee.id,
+          userId: attendee.userId,
+          user_email: attendee.user?.email,
+        });
+        console.log('Email comparison:', {
+          attendee_email: attendee.user?.email,
+          order_buyer_email: ticket.order.buyer_email,
+          match: attendee.user?.email === ticket.order.buyer_email,
+        });
+      } else {
+        console.log('ERROR: No attendee entity found for userId:', userId);
+      }
+
       if (!attendee || attendee.user.email !== ticket.order.buyer_email) {
+        console.log('ERROR: Ownership verification failed');
+        console.log('Reason:', !attendee ? 'Attendee entity not found' : 'Email mismatch');
         throw new BadRequestException('You do not have permission to cancel this ticket');
       }
 
+      console.log('Ownership verified successfully');
+
       // 3. Check if ticket is already cancelled or used
+      console.log('Step 3: Checking ticket status...');
       if (ticket.status === 'cancelled') {
+        console.log('ERROR: Ticket already cancelled');
         throw new BadRequestException('This ticket is already cancelled');
       }
 
       if (ticket.status === 'used' || ticket.checked_in_at) {
+        console.log('ERROR: Ticket already used/checked in');
         throw new BadRequestException('This ticket has already been checked in and cannot be cancelled');
       }
 
-      // 4. Check cancellation policy (e.g., must be at least 24 hours before event)
-      const event = ticket.order.event;
-      const now = new Date();
-      const eventStartTime = new Date(event.start_at);
-      const hoursUntilEvent = (eventStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-      if (hoursUntilEvent < 24) {
-        throw new BadRequestException('Tickets cannot be cancelled less than 24 hours before the event');
-      }
+      // 4. Ticket is valid and can be cancelled
+      console.log('Step 4: Ticket is eligible for cancellation');
 
       // 5. Update ticket status
+      console.log('Step 5: Updating ticket status to cancelled...');
       await manager.update(Ticket, { id: ticketId }, { status: 'cancelled' });
 
       // 6. Restore ticket inventory
+      console.log('Step 6: Restoring ticket inventory...');
       await manager.decrement(
         TicketType,
         { id: ticket.ticket_type_id },
@@ -676,23 +744,41 @@ export class AttendeeService {
       );
 
       // 7. Check if all tickets in the order are cancelled
+      console.log('Step 7: Checking if all order tickets are cancelled...');
       const allTickets = await manager.find(Ticket, {
         where: { order_id: ticket.order_id },
       });
 
       const allCancelled = allTickets.every(t => t.id === ticketId || t.status === 'cancelled');
+      console.log('All tickets cancelled:', allCancelled);
 
       if (allCancelled) {
-        // Update order status to cancelled
+        console.log('Updating order status to cancelled...');
         await manager.update(Order, { id: ticket.order_id }, { status: 'cancelled' });
       }
 
-      // 8. Return updated ticket
+      // 8. Send ticket cancelled notification
+      try {
+        await this.attendeeNotificationService.notifyTicketCancelled(
+          userId,
+          {
+            eventName: ticket.order.event.name,
+            refundAmount: ticket.ticketType?.price_taka || 0,
+            cancellationReason: 'User requested',
+          }
+        );
+      } catch (notifError) {
+        console.error('Failed to send ticket cancelled notification:', notifError);
+      }
+
+      // 9. Return updated ticket
+      console.log('Step 9: Fetching updated ticket...');
       const updatedTicket = await manager.findOne(Ticket, {
         where: { id: ticketId },
         relations: ['ticketType'],
       });
 
+      console.log('=== CANCEL TICKET SUCCESS ===');
       return {
         message: 'Ticket cancelled successfully. Refund will be processed within 5-7 business days.',
         ticket: {

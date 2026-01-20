@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AttendeeController } from './attendee.controller';
 import { AttendeeService } from './attendee.service';
+import { AttendeeNotificationService } from './attendee-notification.service';
 import {
   Event,
   EventSession,
@@ -29,7 +30,7 @@ import { UserEntity } from '../admin/user.entity';
     ]),
   ],
   controllers: [AttendeeController],
-  providers: [AttendeeService],
-  exports: [AttendeeService],
+  providers: [AttendeeService, AttendeeNotificationService],
+  exports: [AttendeeService, AttendeeNotificationService],
 })
 export class AttendeeModule { }

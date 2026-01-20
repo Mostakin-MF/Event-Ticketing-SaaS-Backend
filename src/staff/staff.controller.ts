@@ -19,7 +19,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StaffGuard } from './staff.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { StaffService } from './staff.service';
-import { CreateStaffDto, UpdateStaffDto, CheckinDto } from './staff.dto';
+import { CreateStaffDto, UpdateStaffDto, CheckinDto, ReportIncidentDto, ResolveIncidentDto } from './staff.dto';
 
 @Controller('staff')
 @UseGuards(JwtAuthGuard)
@@ -330,6 +330,46 @@ export class StaffController {
       statusCode: 201,
       message: 'Incident reported successfully',
       data: incident,
+    };
+  }
+
+  // PUT /staff/incidents/:id/resolve
+  @Put('incidents/:id/resolve')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  @HttpCode(HttpStatus.OK)
+  async resolveIncident(
+    @CurrentUser() user: any,
+    @Param('id', new ParseUUIDPipe()) incidentId: string,
+    @Body() resolveDto: ResolveIncidentDto,
+  ) {
+    const incident = await this.staffService.resolveIncident(
+      user.sub,
+      user.tenantId,
+      incidentId,
+      resolveDto.resolutionNotes,
+      resolveDto.resolutionType,
+    );
+
+    return {
+      statusCode: 200,
+      message: 'Incident resolved successfully',
+      data: incident,
+    };
+  }
+
+  // GET /staff/dashboard/stats
+  @Get('dashboard/stats')
+  @HttpCode(HttpStatus.OK)
+  async getDashboardStats(@CurrentUser() user: any) {
+    const stats = await this.staffService.getDashboardStats(
+      user.sub,
+      user.tenantId,
+    );
+
+    return {
+      statusCode: 200,
+      message: 'Dashboard stats retrieved successfully',
+      data: stats,
     };
   }
 

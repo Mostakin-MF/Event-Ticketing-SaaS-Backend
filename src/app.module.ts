@@ -47,7 +47,7 @@ import { PusherModule } from './pusher/pusher.module';
       password: 'root',
       database: 'Saas',
       autoLoadEntities: true,
-      synchronize: true,
+      synchronize: false,
     }),
     EventsModule,
     TicketsModule,

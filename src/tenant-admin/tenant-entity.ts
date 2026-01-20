@@ -9,12 +9,12 @@ import {
   JoinColumn,
 } from 'typeorm';
 
-@Entity('events')
+@Entity('events_v2')
 export class Event {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column('uuid')
+  @Column('uuid', { name: 'tenantId' })
   tenant_id: string;
 
   @Column('varchar', { length: 150 })
@@ -35,28 +35,34 @@ export class Event {
   @Column('varchar', { length: 100 })
   country: string;
 
-  @Column('timestamp')
+  @Column('timestamp', { name: 'startAt' })
   start_at: Date;
 
-  @Column('timestamp')
+  @Column('timestamp', { name: 'endAt' })
   end_at: Date;
 
   @Column('varchar', { length: 50, default: 'draft' })
-  status: 'draft' | 'scheduled' | 'active' | 'cancelled' | 'completed';
+  status: 'draft' | 'scheduled' | 'active' | 'published' | 'cancelled' | 'completed';
 
-  @Column('boolean', { default: false, name: 'is_public' })
+  @Column('boolean', { default: false, name: 'isPublished' })
   is_public: boolean;
 
-  @Column('jsonb', { nullable: true, name: 'seo_meta' })
-  seo_meta: Record<string, any> | null;
-
-  @Column('varchar', { length: 500, nullable: true, name: 'hero_image_url' })
+  @Column('varchar', { length: 500, nullable: true, name: 'imageUrl' })
   hero_image_url: string | null;
 
-  @CreateDateColumn()
+  @Column('int', { default: 100 })
+  capacity: number;
+
+  @Column('int', { default: 0, name: 'soldCount' })
+  sold_count: number;
+
+  @Column('jsonb', { nullable: true, name: 'seoSettings' })
+  seo_meta: Record<string, any> | null;
+
+  @CreateDateColumn({ name: 'createdAt' })
   created_at: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updatedAt' })
   updated_at: Date;
 
   @OneToMany(() => EventSession, (session) => session.event)

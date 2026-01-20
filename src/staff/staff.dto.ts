@@ -78,3 +78,27 @@ export class CheckinDto {
   @IsNotEmpty()
   qrPayload: string; // QR code payload or ticket ID
 }
+
+export class ReportIncidentDto {
+  @IsEnum(['ISSUE', 'SECURITY', 'MEDICAL', 'LOST_ITEM'])
+  @IsNotEmpty()
+  type: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(5)
+  @MaxLength(1000)
+  description: string;
+}
+
+export class ResolveIncidentDto {
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(5)
+  @MaxLength(1000)
+  resolutionNotes: string;
+
+  @IsEnum(['FIXED', 'ESCALATED', 'DEFERRED'])
+  @IsNotEmpty()
+  resolutionType: string;
+}

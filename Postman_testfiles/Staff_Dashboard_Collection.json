@@ -1,0 +1,140 @@
+{
+  "info": {
+    "name": "Staff Dashboard - Testing Collection",
+    "description": "Test API endpoints for staff dashboard enhancement",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/staff/dashboard/stats",
+              "host": ["{{base_url}}"],
+              "path": ["staff", "dashboard", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Incidents",
+      "item": [
+        {
+          "name": "Get All Incidents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/staff/incidents?page=1&limit=20&onlyMe=true",
+              "host": ["{{base_url}}"],
+              "path": ["staff", "incidents"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "onlyMe",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Report Incident",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"ISSUE\",\n  \"description\": \"QR scanner at gate 2 is not responding\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/staff/incidents",
+              "host": ["{{base_url}}"],
+              "path": ["staff", "incidents"]
+            }
+          }
+        },
+        {
+          "name": "Resolve Incident",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resolutionNotes\": \"Restarted the QR scanner device, now working properly\",\n  \"resolutionType\": \"FIXED\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/staff/incidents/{{incident_id}}/resolve",
+              "host": ["{{base_url}}"],
+              "path": ["staff", "incidents", "{{incident_id}}", "resolve"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "staff_token",
+      "value": "YOUR_JWT_TOKEN_HERE",
+      "type": "string"
+    },
+    {
+      "key": "incident_id",
+      "value": "INCIDENT_UUID_HERE",
+      "type": "string"
+    }
+  ]
+}

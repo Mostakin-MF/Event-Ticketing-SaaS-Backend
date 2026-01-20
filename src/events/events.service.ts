@@ -13,7 +13,7 @@ export class EventsService {
   constructor(
     @InjectRepository(EventEntity)
     private eventRepository: Repository<EventEntity>,
-  ) {}
+  ) { }
 
   private generateSlug(name: string): string {
     return name
@@ -24,7 +24,7 @@ export class EventsService {
 
   async createEvent(tenantId: string, createEventDto: CreateEventDto) {
     const slug = createEventDto.slug || this.generateSlug(createEventDto.name);
-    
+
     const eventData: Partial<EventEntity> = {
       ...createEventDto,
       slug,
@@ -65,10 +65,12 @@ export class EventsService {
   }
 
   async getEventBySlug(tenantSlug: string, eventSlug: string) {
+    // First, we need to get the tenant by slug to get its ID
+    // Since we don't have AdminService injected, we'll query directly
     const event = await this.eventRepository
       .createQueryBuilder('event')
-      .leftJoinAndSelect('event.tenant', 'tenant')
       .leftJoinAndSelect('event.theme', 'theme')
+      .leftJoin('tenants', 'tenant', 'tenant.id = event.tenantId')
       .where('tenant.slug = :tenantSlug', { tenantSlug })
       .andWhere('event.slug = :eventSlug', { eventSlug })
       .andWhere('event.isPublished = :isPublished', { isPublished: true })
@@ -82,7 +84,7 @@ export class EventsService {
 
   async updateEvent(id: string, updateEventDto: UpdateEventDto) {
     const event = await this.getEventById(id);
-    
+
     const updateData: Partial<EventEntity> = {};
 
     // Only update fields that are provided
@@ -138,65 +140,65 @@ export class EventsService {
   // Image Upload Methods
   async uploadBannerImages(eventId: string, files: Express.Multer.File[]) {
     const event = await this.getEventById(eventId);
-    
+
     // Save files and get URLs
     const imageUrls = files.map(file => {
       const filename = `${Date.now()}-${file.originalname}`;
       const uploadPath = path.join(process.cwd(), 'uploads', 'banners', filename);
-      
+
       // Ensure directory exists
       const dir = path.dirname(uploadPath);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      
+
       fs.writeFileSync(uploadPath, file.buffer);
       return `/uploads/banners/${filename}`;
     });
 
     // Add to existing banner images
     const bannerImages = [...(event.bannerImages || []), ...imageUrls];
-    
+
     await this.eventRepository.update(eventId, { bannerImages });
     return this.getEventById(eventId);
   }
 
   async uploadGalleryImages(eventId: string, files: Express.Multer.File[]) {
     const event = await this.getEventById(eventId);
-    
+
     const imageUrls = files.map(file => {
       const filename = `${Date.now()}-${file.originalname}`;
       const uploadPath = path.join(process.cwd(), 'uploads', 'gallery', filename);
-      
+
       const dir = path.dirname(uploadPath);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      
+
       fs.writeFileSync(uploadPath, file.buffer);
       return `/uploads/gallery/${filename}`;
     });
 
     const gallery = [...(event.gallery || []), ...imageUrls];
-    
+
     await this.eventRepository.update(eventId, { gallery });
     return this.getEventById(eventId);
   }
 
   async deleteImage(eventId: string, imageUrl: string) {
     const event = await this.getEventById(eventId);
-    
+
     // Remove from banner images
     const bannerImages = (event.bannerImages || []).filter(url => url !== imageUrl);
     // Remove from gallery
     const gallery = (event.gallery || []).filter(url => url !== imageUrl);
-    
+
     // Delete file from filesystem
     const filePath = path.join(process.cwd(), imageUrl);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
-    
+
     await this.eventRepository.update(eventId, { bannerImages, gallery });
     return this.getEventById(eventId);
   }

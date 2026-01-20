@@ -21,6 +21,9 @@ export class IncidentEntity {
     @Column({ name: 'staff_id', type: 'uuid' })
     staffId: string;
 
+    @Column({ name: 'resolved_by_staff_id', type: 'uuid', nullable: true })
+    resolvedByStaffId: string | null;
+
     @Column({
         type: 'enum',
         enumName: 'incidents_type_enum',
@@ -34,6 +37,15 @@ export class IncidentEntity {
 
     @Column({ type: 'varchar', length: 50, default: 'OPEN' })
     status: string; // e.g. "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"
+
+    @Column({ type: 'text', nullable: true })
+    resolutionNotes: string | null;
+
+    @Column({ type: 'varchar', length: 50, nullable: true })
+    resolutionType: string | null; // e.g. "FIXED", "ESCALATED", "DEFERRED"
+
+    @Column({ name: 'resolved_at', type: 'timestamp', nullable: true })
+    resolvedAt: Date | null;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
@@ -52,4 +64,8 @@ export class IncidentEntity {
     @ManyToOne(() => StaffEntity, { nullable: false, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'staff_id' })
     staff: StaffEntity;
+
+    @ManyToOne(() => StaffEntity, { nullable: true, onDelete: 'SET NULL' })
+    @JoinColumn({ name: 'resolved_by_staff_id' })
+    resolvedByStaff: StaffEntity | null;
 }
