@@ -76,7 +76,7 @@ export class UpdateStaffDto {
 export class CheckinDto {
   @IsString()
   @IsNotEmpty()
-  qrPayload: string; // QR code payload or ticket ID
+  ticketId: string;
 }
 
 export class ReportIncidentDto {

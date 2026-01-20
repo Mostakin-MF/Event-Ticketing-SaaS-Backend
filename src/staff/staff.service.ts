@@ -380,135 +380,47 @@ export class StaffService {
    * Called from: POST /staff/:id/checkin
    */
   async checkInTicket(
-    staffId: string,
+    userId: string,
+    tenantId: string,
     dto: CheckinDto,
   ): Promise<{ message: string; ticket: Partial<Ticket> }> {
-    if (!dto.qrPayload) {
-      throw new BadRequestException('QR payload is required');
+    const { ticketId } = dto;
+
+    if (!ticketId) {
+      throw new BadRequestException('Ticket ID is required');
     }
 
-    const staff = await this.staffRepo.findOne({ where: { id: staffId } });
+    const staff = await this.staffRepo.findOne({ where: { userId, tenantId } });
     if (!staff) {
-      throw new NotFoundException(`Staff with id ${staffId} not found`);
+      throw new NotFoundException(`Staff record not found for user ${userId} in tenant ${tenantId}`);
     }
 
-    // Find ticket by qr_code_payload or by id
+    // 1. Find Ticket (Simple lookup by ID)
     const ticket = await this.ticketRepo.findOne({
-      where: [{ qr_code_payload: dto.qrPayload }, { id: dto.qrPayload }],
-      relations: ['order', 'order.event'],
+      where: { id: ticketId },
+      relations: ['order', 'order.event', 'ticketType'],
     });
 
     if (!ticket) {
-      // Log invalid scan
-      await this.activityLogRepo.save(
-        this.activityLogRepo.create({
-          tenantId: staff.tenantId,
-          actorId: staff.id,
-          action: 'INVALID_QR',
-          metadata: { qrPayload: dto.qrPayload },
-        }),
-      );
-
-      throw new NotFoundException('Ticket not found for given QR payload');
+      throw new NotFoundException('Ticket not found');
     }
 
-    // Validate ticket belongs to the same tenant as staff
-    if (ticket.order?.tenant_id !== staff.tenantId) {
-      // Log unauthorized access attempt
-      await this.activityLogRepo.save(
-        this.activityLogRepo.create({
-          tenantId: staff.tenantId,
-          actorId: staff.id,
-          action: 'UNAUTHORIZED_CHECKIN_ATTEMPT',
-          metadata: {
-            ticketId: ticket.id,
-            ticketTenantId: ticket.order?.tenant_id,
-            staffTenantId: staff.tenantId,
-          },
-        }),
-      );
-
-      throw new ForbiddenException('Ticket does not belong to your tenant');
-    }
-
-    // Already checked in?
+    // 2. Check status
     if (ticket.checked_in_at) {
-      await this.activityLogRepo.save(
-        this.activityLogRepo.create({
-          tenantId: staff.tenantId,
-          actorId: staff.id,
-          action: 'DUPLICATE_SCAN',
-          metadata: {
-            ticketId: ticket.id,
-            checkedInAt: ticket.checked_in_at,
-          },
-        }),
-      );
-
       throw new BadRequestException('Ticket has already been checked in');
     }
 
-    // Mark as checked in
+    // 3. Update status
     ticket.checked_in_at = new Date();
-
     const savedTicket = await this.ticketRepo.save(ticket);
 
-    // Log success
-    await this.activityLogRepo.save(
-      this.activityLogRepo.create({
-        tenantId: staff.tenantId,
-        actorId: staff.id,
-        action: 'CHECKIN_SUCCESS',
-        metadata: {
-          ticketId: ticket.id,
-          attendeeName: ticket.attendee_name,
-          attendeeEmail: ticket.attendee_email,
-          eventId: ticket.order?.event_id,
-        },
-      }),
-    );
-
-    // Send check-in confirmation email
-    if (ticket.attendee_email) {
-      try {
-        const eventName = ticket.order?.event?.name || 'the event';
-        const checkInTime = new Date(ticket.checked_in_at).toLocaleString();
-
-        await this.mailerService.sendMail({
-          to: ticket.attendee_email,
-          subject: 'Ticket Check-in Confirmation - Event Ticketing System',
-          text: `Hello ${ticket.attendee_name},\n\nYour ticket has been successfully checked in for ${eventName}.\n\nTicket Details:\n- Ticket ID: ${ticket.id}\n- Checked in at: ${checkInTime}\n\nThank you for attending!\n\nBest regards,\nEvent Ticketing Team`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #333;">Check-in Confirmation</h2>
-              <p>Hello ${ticket.attendee_name},</p>
-              <p>Your ticket has been successfully checked in for <strong>${eventName}</strong>.</p>
-              <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                <p style="margin: 0;"><strong>Ticket Details:</strong></p>
-                <ul style="margin: 10px 0;">
-                  <li><strong>Ticket ID:</strong> ${ticket.id}</li>
-                  <li><strong>Checked in at:</strong> ${checkInTime}</li>
-                </ul>
-              </div>
-              <p>Thank you for attending!</p>
-              <p>Best regards,<br>Event Ticketing Team</p>
-            </div>
-          `,
-        });
-      } catch (error) {
-        // Log error but don't fail the check-in
-        console.error('Failed to send check-in confirmation email:', error);
-      }
-    }
-
-    // Hide QR payload in response
-    type SafeTicket = Omit<Ticket, 'qr_code_payload'>;
+    // 4. Return success
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { qr_code_payload, ...safeTicket } = savedTicket;
 
     return {
       message: 'Ticket checked in successfully',
-      ticket: safeTicket as SafeTicket,
+      ticket: safeTicket,
     };
   }
 
@@ -763,29 +675,49 @@ export class StaffService {
   async searchTickets(
     tenantId: string,
     searchTerm: string,
-  ): Promise<Partial<Ticket>[]> {
-    if (!searchTerm || searchTerm.trim().length < 2) {
-      throw new BadRequestException(
-        'Search term must be at least 2 characters long',
-      );
+  ): Promise<any[]> {
+    let tickets;
+
+    if (!searchTerm || searchTerm.trim().length < 1) {
+      // Return recent tickets if no search term
+      tickets = await this.ticketRepo.find({
+        where: { order: { tenant_id: tenantId } },
+        relations: ['order', 'ticketType'],
+        order: { created_at: 'DESC' },
+        take: 20
+      });
+    } else {
+      tickets = await this.ticketRepo
+        .createQueryBuilder('ticket')
+        .innerJoinAndSelect('ticket.order', 'order')
+        .innerJoinAndSelect('ticket.ticketType', 'ticketType')
+        .where('order.tenant_id = :tenantId', { tenantId })
+        .andWhere(
+          '(ticket.attendee_name ILIKE :q OR ticket.attendee_email ILIKE :q)',
+          { q: `%${searchTerm}%` },
+        )
+        .orderBy('ticket.created_at', 'DESC')
+        .getMany();
     }
 
-    const tickets = await this.ticketRepo
-      .createQueryBuilder('ticket')
-      .innerJoinAndSelect('ticket.order', 'order')
-      .where('order.tenant_id = :tenantId', { tenantId })
-      .andWhere(
-        '(ticket.attendee_name ILIKE :q OR ticket.attendee_email ILIKE :q)',
-        { q: `%${searchTerm}%` },
-      )
-      .orderBy('ticket.created_at', 'DESC')
-      .getMany();
+    // Transform to frontend-friendly DTO
+    return tickets.map((t) => {
+      let status = 'VALID';
+      if (t.checked_in_at) {
+        status = 'CHECKED_IN';
+      } else if (t.status) {
+        status = t.status.toUpperCase();
+      }
 
-    type SafeTicket = Omit<Ticket, 'qr_code_payload'>;
-    return tickets.map((t): SafeTicket => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { qr_code_payload, ...rest } = t;
-      return rest as SafeTicket;
+      return {
+        id: t.id,
+        attendeeName: t.attendee_name,
+        attendeeEmail: t.attendee_email,
+        orderNumber: t.order.public_lookup_token || t.order.id, // Prefer short token
+        ticketType: t.ticketType ? t.ticketType.name : 'Unknown Ticket',
+        seatInfo: t.seat_label || 'General Admission',
+        status: status,
+      };
     });
   }
 
@@ -940,21 +872,29 @@ export class StaffService {
    * Search orders by buyer email.
    * Called from: GET /staff/orders/search?email=...
    */
-  async searchOrdersByEmail(tenantId: string, email: string): Promise<Order[]> {
-    if (!email || email.trim().length < 3) {
-      throw new BadRequestException('Email must be at least 3 characters long');
+  async searchOrdersByEmail(tenantId: string, email: string): Promise<any[]> {
+    let whereCondition: any = { tenant_id: tenantId };
+
+    if (email && email.trim().length > 0) {
+      whereCondition.buyer_email = email.toLowerCase().trim();
     }
+    // If no email provided, it effectively returns recent orders due to the take: 20 below
 
     const orders = await this.orderRepo.find({
-      where: {
-        tenant_id: tenantId,
-        buyer_email: email.toLowerCase().trim(),
-      },
-      relations: ['event', 'tickets'],
+      where: whereCondition,
+      relations: ['event', 'tickets', 'orderItems'],
       order: { created_at: 'DESC' },
+      take: 20, // Limit to 20 for safety
     });
 
-    return orders;
+    return orders.map((o) => ({
+      id: o.id,
+      customerName: o.buyer_name,
+      email: o.buyer_email,
+      status: o.status,
+      items: o.orderItems ? o.orderItems.length : 0,
+      amount: o.total_taka,
+    }));
   }
 
   /**
@@ -964,17 +904,26 @@ export class StaffService {
   async searchOrderByCode(
     tenantId: string,
     code: string,
-  ): Promise<Order | null> {
+  ): Promise<any | null> {
     if (!code || code.trim().length < 3) {
       throw new BadRequestException('Code must be at least 3 characters long');
     }
 
     const order = await this.orderRepo.findOne({
-      where: [{ tenant_id: tenantId, id: code }],
-      relations: ['event', 'tickets', 'tickets.ticketType'],
+      where: [{ tenant_id: tenantId, id: code }, { tenant_id: tenantId, public_lookup_token: code }],
+      relations: ['event', 'tickets', 'tickets.ticketType', 'orderItems'],
     });
 
-    return order;
+    if (!order) return null;
+
+    return {
+      id: order.id,
+      customerName: order.buyer_name,
+      email: order.buyer_email,
+      status: order.status,
+      items: order.orderItems ? order.orderItems.length : 0,
+      amount: order.total_taka,
+    };
   }
 
   /**
@@ -1056,11 +1005,11 @@ export class StaffService {
     const openIncidents =
       staff.position === 'SUPERVISOR'
         ? await this.incidentRepo.count({
-            where: { tenantId, status: 'OPEN' },
-          })
+          where: { tenantId, status: 'OPEN' },
+        })
         : await this.incidentRepo.count({
-            where: { tenantId, staffId: staff.id, status: 'OPEN' },
-          });
+          where: { tenantId, staffId: staff.id, status: 'OPEN' },
+        });
 
     // Count resolved incidents this week
     const weekAgo = new Date();
@@ -1069,20 +1018,20 @@ export class StaffService {
     const resolvedThisWeek =
       staff.position === 'SUPERVISOR'
         ? await this.incidentRepo.count({
-            where: {
-              tenantId,
-              status: 'RESOLVED',
-              resolvedAt: Between(weekAgo, new Date()),
-            },
-          })
+          where: {
+            tenantId,
+            status: 'RESOLVED',
+            resolvedAt: Between(weekAgo, new Date()),
+          },
+        })
         : await this.incidentRepo.count({
-            where: {
-              tenantId,
-              staffId: staff.id,
-              status: 'RESOLVED',
-              resolvedAt: Between(weekAgo, new Date()),
-            },
-          });
+          where: {
+            tenantId,
+            staffId: staff.id,
+            status: 'RESOLVED',
+            resolvedAt: Between(weekAgo, new Date()),
+          },
+        });
 
     // Get assigned events
     const assignedEvents = await this.eventRepo.count({
@@ -1109,7 +1058,7 @@ export class StaffService {
     orderId: string,
   ): Promise<Order> {
     const order = await this.orderRepo.findOne({
-      where: { 
+      where: {
         id: orderId,
         tenant_id: tenantId,
       },

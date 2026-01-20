@@ -129,7 +129,7 @@ export class StaffController {
     @Body() checkinDto: CheckinDto,
   ) {
     // Use staff ID from current user context
-    const result = await this.staffService.checkInTicket(user.sub, checkinDto);
+    const result = await this.staffService.checkInTicket(user.sub, user.tenantId, checkinDto);
 
     return {
       statusCode: 200,
@@ -404,13 +404,14 @@ export class StaffController {
     @CurrentUser() user: any,
     @Query('q') searchTerm: string,
   ) {
-    if (!searchTerm || searchTerm.length < 2) {
-      return {
-        statusCode: 400,
-        message: 'Search term must be at least 2 characters',
-        data: [],
-      };
-    }
+    // Allow empty search to return recent items
+    // if (!searchTerm || searchTerm.length < 2) {
+    //   return {
+    //     statusCode: 400,
+    //     message: 'Search term must be at least 2 characters',
+    //     data: [],
+    //   };
+    // }
 
     const tickets = await this.staffService.searchTickets(
       user.tenantId,
@@ -560,6 +561,20 @@ export class StaffController {
         statusCode: 200,
         message: 'Order found by code',
         data: order,
+      };
+    }
+
+    // If no params, return recent orders
+    if (!email && !code) {
+      const orders = await this.staffService.searchOrdersByEmail(
+        user.tenantId,
+        '', // Empty email triggers "recent" fetch in service
+      );
+      return {
+        statusCode: 200,
+        message: 'Recent orders retrieved',
+        data: orders,
+        count: orders.length,
       };
     }
 

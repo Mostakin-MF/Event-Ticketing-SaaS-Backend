@@ -1,5 +1,6 @@
 import { Body, Controller, Post, HttpCode, HttpStatus, Res, Get, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { AdminService } from '../admin/admin.service';
 import { LoginDto } from './login.dto';
 import type { Response } from 'express';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -11,6 +12,7 @@ import { PusherService } from '../pusher/pusher.service';
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly adminService: AdminService,
     private readonly pusherService: PusherService,
   ) { }
 
@@ -44,8 +46,20 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  getProfile(@Request() req) {
-    return req.user;
+  async getProfile(@Request() req) {
+    // Fetch fresh user data from database using ID from token payload
+    // req.user.sub contains the user ID
+    const user = await this.adminService.getUserById(req.user.sub);
+
+    // Map to expected frontend format and exclude sensitive data
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.fullName,
+      role: req.user.role, // Use role from token or maybe fetch fresh? Token is safer for consistency with guards.
+      isPlatformAdmin: user.isPlatformAdmin,
+      // Add other fields if needed
+    };
   }
 
   /**
