@@ -14,6 +14,7 @@ import {
 } from '../tenant-admin/tenant-entity';
 import { UserEntity } from '../admin/user.entity';
 import { TenantUserEntity } from '../admin/tenant-user.entity';
+import { PusherModule } from '../pusher/pusher.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { TenantUserEntity } from '../admin/tenant-user.entity';
       TenantUserEntity,
     ]),
     MailerModule,
+    PusherModule,
   ],
   controllers: [StaffController],
   providers: [StaffService],

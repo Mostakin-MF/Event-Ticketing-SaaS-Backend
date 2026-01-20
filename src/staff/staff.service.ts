@@ -25,6 +25,7 @@ import {
 } from '../tenant-admin/tenant-entity';
 import { UserEntity } from '../admin/user.entity';
 import { TenantUserEntity } from '../admin/tenant-user.entity';
+import { PusherService } from '../pusher/pusher.service';
 
 @Injectable()
 export class StaffService {
@@ -57,6 +58,7 @@ export class StaffService {
     private readonly tenantUserRepo: Repository<TenantUserEntity>,
 
     private readonly mailerService: MailerService,
+    private readonly pusherService: PusherService,
   ) { }
 
   /**
@@ -618,7 +620,7 @@ export class StaffService {
     type: string,
     description: string,
   ): Promise<IncidentEntity> {
-    const staff = await this.staffRepo.findOne({ where: { userId, tenantId } });
+    const staff = await this.staffRepo.findOne({ where: { userId, tenantId }, relations: ['user'] });
     if (!staff) {
       throw new NotFoundException(`Staff record not found for user ${userId}`);
     }
@@ -631,7 +633,28 @@ export class StaffService {
       status: 'OPEN',
     });
 
-    return this.incidentRepo.save(incident);
+    const savedIncident = await this.incidentRepo.save(incident);
+
+    // Trigger real-time notification to all staff in the tenant
+    try {
+      await this.pusherService.triggerStaffBroadcast(
+        tenantId,
+        'incident-created',
+        {
+          id: savedIncident.id,
+          type: savedIncident.type,
+          description: savedIncident.description,
+          reportedBy: staff.fullName,
+          reportedByEmail: staff.user?.email,
+          timestamp: savedIncident.createdAt || new Date(),
+        },
+      );
+    } catch (error) {
+      // Log error but don't fail the incident creation
+      console.error('Failed to send real-time notification:', error);
+    }
+
+    return savedIncident;
   }
 
   /**
